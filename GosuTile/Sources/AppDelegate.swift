@@ -6,8 +6,9 @@ import ApplicationServices
 
 // MARK: - AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate {
+    let logger = Logger()
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print(
+        logger.info(
         """
         +==========================================+
         |    _____              _______ _ _        |
