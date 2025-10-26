@@ -6,8 +6,17 @@ import ApplicationServices
 
 // MARK: - AppDelegate
 class AppDelegate: NSObject, NSApplicationDelegate {
-    let logger = Logger()
+    let logger: Logger
+    let wm: WindowManager
+
+    override init() {
+        self.logger = Logger()
+        self.wm = WindowManager(logger: logger)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        self.wm.initialize()
+
         logger.info(
         """
         +==========================================+
