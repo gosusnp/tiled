@@ -6,8 +6,9 @@ import ApplicationServices
 
 // MARK: - WindowManager
 class WindowManager {
+    var activeFrame: Frame? = nil
     var rootFrame: Frame? = nil
-    var windows: [Window] = []
+    var windows: [AppWindow] = []
     let logger: Logger
 
     init(logger: Logger) {
@@ -25,6 +26,12 @@ class WindowManager {
         self.initializeLayout()
     }
 
+    func assignWindow(_ window: AppWindow) throws {
+        if let frame = self.activeFrame {
+            try frame.addWindow(window)
+        }
+    }
+
     private func initializeLayout() {
         guard let screen = NSScreen.main else { return }
         let bounds = screen.visibleFrame
@@ -34,8 +41,17 @@ class WindowManager {
             width: bounds.width,
             height: bounds.height,
         ))
+        self.activeFrame = self.rootFrame
 
         inspectLayout()
+
+        for w in self.windows {
+            do {
+                try assignWindow(w)
+            } catch {
+                self.logger.warning("Failed to assign \(w.title)")
+            }
+        }
     }
 
     private func inspectLayout() {
@@ -46,8 +62,8 @@ class WindowManager {
         }
     }
 
-    private func getAllWindows() -> [Window] {
-        var windows: [Window] = []
+    private func getAllWindows() -> [AppWindow] {
+        var windows: [AppWindow] = []
 
         for app in NSWorkspace.shared.runningApplications {
             guard app.activationPolicy == .regular else { continue }
@@ -57,7 +73,7 @@ class WindowManager {
             let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
 
             if result == .success, let windowList = windowsRef as? [AXUIElement] {
-                windows += windowList.compactMap { Window($0) }
+                windows += windowList.compactMap { AppWindow($0) }
             }
         }
 
