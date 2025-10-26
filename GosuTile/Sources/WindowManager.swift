@@ -6,8 +6,9 @@ import ApplicationServices
 
 // MARK: - WindowManager
 class WindowManager {
-    let logger: Logger
+    var rootFrame: Frame? = nil
     var windows: [Window] = []
+    let logger: Logger
 
     init(logger: Logger) {
         self.logger = logger
@@ -21,6 +22,28 @@ class WindowManager {
             logger.debug("Found window: \(w.appName): \(w.title)")
         }
 
+        self.initializeLayout()
+    }
+
+    private func initializeLayout() {
+        guard let screen = NSScreen.main else { return }
+        let bounds = screen.visibleFrame
+        self.rootFrame = Frame(rect: CGRect(
+            x: bounds.minX,
+            y: bounds.minY,
+            width: bounds.width,
+            height: bounds.height,
+        ))
+
+        inspectLayout()
+    }
+
+    private func inspectLayout() {
+        if let frame = self.rootFrame {
+            self.logger.debug("RootFrame: \(frame.toString())")
+        } else {
+            self.logger.debug("Unable to detect rootFrame")
+        }
     }
 
     private func getAllWindows() -> [Window] {
