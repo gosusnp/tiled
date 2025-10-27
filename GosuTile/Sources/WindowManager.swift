@@ -8,7 +8,7 @@ import ApplicationServices
 class WindowManager {
     var activeFrame: Frame? = nil
     var rootFrame: Frame? = nil
-    var windows: [AppWindow] = []
+    var windows: [WindowController] = []
     let logger: Logger
 
     init(logger: Logger) {
@@ -26,7 +26,7 @@ class WindowManager {
         self.initializeLayout()
     }
 
-    func assignWindow(_ window: AppWindow) throws {
+    func assignWindow(_ window: WindowController) throws {
         if let frame = self.activeFrame {
             try frame.addWindow(window)
         }
@@ -74,8 +74,8 @@ class WindowManager {
         }
     }
 
-    private func getAllWindows() -> [AppWindow] {
-        var windows: [AppWindow] = []
+    private func getAllWindows() -> [WindowController] {
+        var windows: [WindowController] = []
 
         for app in NSWorkspace.shared.runningApplications {
             guard app.activationPolicy == .regular else { continue }
@@ -85,7 +85,7 @@ class WindowManager {
             let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
 
             if result == .success, let windowList = windowsRef as? [AXUIElement] {
-                windows += windowList.compactMap { AppWindow($0) }
+                windows += windowList.compactMap { WindowController.fromElement($0) }
             }
         }
 
