@@ -6,8 +6,8 @@ import ApplicationServices
 
 // MARK: - WindowManager
 class WindowManager {
-    var activeFrame: Frame? = nil
-    var rootFrame: Frame? = nil
+    var activeFrame: FrameController? = nil
+    var rootFrame: FrameController? = nil
     var windows: [WindowController] = []
     let logger: Logger
 
@@ -46,13 +46,7 @@ class WindowManager {
 
     private func initializeLayout() {
         guard let screen = NSScreen.main else { return }
-        let bounds = screen.visibleFrame
-        self.rootFrame = Frame(rect: CGRect(
-            x: bounds.minX,
-            y: bounds.minY,
-            width: bounds.width,
-            height: bounds.height,
-        ))
+        self.rootFrame = FrameController.fromScreen(screen)
         self.activeFrame = self.rootFrame
 
         inspectLayout()
