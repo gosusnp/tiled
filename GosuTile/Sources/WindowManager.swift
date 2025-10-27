@@ -32,6 +32,18 @@ class WindowManager {
         }
     }
 
+    func splitHorizontally() throws {
+        if let frame = self.activeFrame {
+            try frame.split(direction: Direction.Horizontal)
+        }
+    }
+
+    func splitVertically() throws {
+        if let frame = self.activeFrame {
+            try frame.split(direction: Direction.Vertical)
+        }
+    }
+
     private func initializeLayout() {
         guard let screen = NSScreen.main else { return }
         let bounds = screen.visibleFrame
