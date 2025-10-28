@@ -5,7 +5,9 @@ import Cocoa
 import ApplicationServices
 
 // MARK: - WindowManager
+@MainActor
 class WindowManager {
+    var config: ConfigController = ConfigController()
     var activeFrame: FrameController? = nil
     var rootFrame: FrameController? = nil
     var windows: [WindowController] = []
@@ -24,6 +26,7 @@ class WindowManager {
         }
 
         self.initializeLayout()
+        self.rootFrame?.refreshOverlay()
     }
 
     func assignWindow(_ window: WindowController) throws {
@@ -46,7 +49,7 @@ class WindowManager {
 
     private func initializeLayout() {
         guard let screen = NSScreen.main else { return }
-        self.rootFrame = FrameController.fromScreen(screen)
+        self.rootFrame = FrameController.fromScreen(screen, config: self.config)
         self.activeFrame = self.rootFrame
 
         inspectLayout()

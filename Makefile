@@ -6,3 +6,6 @@ build:
 
 run:
 	make -C GosuTile run
+
+watch-run:
+	watchexec -r -e swift -w GosuTile/Sources make run

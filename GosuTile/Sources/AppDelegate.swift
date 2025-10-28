@@ -5,6 +5,7 @@ import Cocoa
 import ApplicationServices
 
 // MARK: - AppDelegate
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     let logger: Logger
     let wm: WindowManager
