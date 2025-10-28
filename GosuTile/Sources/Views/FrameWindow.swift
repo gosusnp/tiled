@@ -7,27 +7,36 @@ import ApplicationServices
 @MainActor
 class FrameWindow {
     private var window: NSWindow
+    private var titleBarView: FrameTitleBarView? {
+        window.contentView as? FrameTitleBarView
+    }
 
     init() {
-        let window = NSWindow(
+        let panel = NSPanel(
             contentRect: .zero,
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
 
-        window.level = .floating
-        // TODO fix the color
-        window.backgroundColor = NSColor.blue
-        window.isOpaque = false
-        window.hasShadow = false
+        panel.level = .floating
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary]
 
-        window.orderFront(nil)
+        // Panel won't activate when shown
+        panel.becomesKeyOnlyIfNeeded = false
+        panel.hidesOnDeactivate = false
 
-        self.window = window
+        panel.contentView = FrameTitleBarView(frame: .zero)
+        panel.orderFront(nil)
+
+        self.window = panel
     }
 
-    func updateOverlay(rect: CGRect) {
+    func updateOverlay(rect: CGRect, tabs: [TabInfo]) {
         self.window.setFrame(rect, display: true)
+        self.titleBarView?.setupTabs(tabs: tabs)
     }
 }

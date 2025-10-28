@@ -12,6 +12,16 @@ enum WindowError: Error {
 
 class WindowController {
     let window: WindowModel
+    var isActive: Bool {
+        var value: AnyObject?
+        let result =
+            AXUIElementCopyAttributeValue(self.window.element, kAXFocusedAttribute as CFString, &value)
+
+        guard result == .success, let isFocused = value as? Bool else {
+            return false
+        }
+        return isFocused
+    }
 
     var appName: String { window.appName }
     var title: String { window.title }

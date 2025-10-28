@@ -20,7 +20,11 @@ class FrameController {
     }
 
     func refreshOverlay() {
-        self.window.updateOverlay(rect: self.getTitleBarRect())
+        let tabs = self.windows.map { TabInfo(title: $0.title, isActive: $0.isActive) }
+        self.window.updateOverlay(
+            rect: self.getTitleBarRect(),
+            tabs: tabs,
+        )
     }
 
     func addWindow(_ window: WindowController) throws {
