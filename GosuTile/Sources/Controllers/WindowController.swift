@@ -88,21 +88,36 @@ class WindowController {
         var pid: pid_t = 0
         AXUIElementGetPid(window, &pid)
 
-        // Try raise action
-        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-
-        // Try activating app
+        // 1. First, activate the application
         if let app = NSRunningApplication(processIdentifier: pid) {
-            app.activate()
+            if #available(macOS 14.0, *) {
+                app.activate(options: .activateAllWindows)
+            } else {
+                app.activate(options: [.activateIgnoringOtherApps])
+            }
         }
 
-        // // Try setting as main window
+        // 2. Longer delay after app switcher usage
+        usleep(100_000) // 100ms - increased delay
+
+        // 3. Set as main window BEFORE raise action
         let appElement = AXUIElementCreateApplication(pid)
-        AXUIElementSetAttributeValue(
-            appElement,
-            kAXMainWindowAttribute as CFString,
-            window as CFTypeRef
-        )
+        AXUIElementSetAttributeValue(appElement, kAXMainWindowAttribute as CFString, window as CFTypeRef)
+
+        // 4. Another small delay
+        usleep(50_000) // 50ms
+
+        // 5. Try the raise action
+        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+
+        // 6. Set focused attribute
+        AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+
+        // 7. Force frontmost (this helps after app switcher)
+        AXUIElementSetAttributeValue(appElement, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+
+        // 8. Set main window again (helps with stubborn windows)
+        AXUIElementSetAttributeValue(appElement, kAXMainWindowAttribute as CFString, window as CFTypeRef)
     }
 
     static func fromElement(_ element: AXUIElement) -> WindowController {
