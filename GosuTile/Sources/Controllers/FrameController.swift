@@ -8,20 +8,27 @@ import ApplicationServices
 class FrameController {
     let config: ConfigController
     let frame: FrameModel
-    let window: FrameWindow
+    let frameWindow: FrameWindow
 
     var children: [FrameController] = []
     var windows: [WindowController] = []
+    var activeIndex = 0;
+
+    var activeWindow: WindowController? {
+        self.windows[activeIndex]
+    }
 
     init(frame: FrameModel, config: ConfigController) {
         self.config = config
         self.frame = frame
-        self.window = FrameWindow()
+        self.frameWindow = FrameWindow()
     }
 
     func refreshOverlay() {
-        let tabs = self.windows.map { TabInfo(title: $0.title, isActive: $0.isActive) }
-        self.window.updateOverlay(
+        let tabs = self.windows.enumerated().map { (index, w) in
+            TabInfo(title: w.title, isActive: index == self.activeIndex)
+        }
+        self.frameWindow.updateOverlay(
             rect: self.getTitleBarRect(),
             tabs: tabs,
         )
@@ -35,6 +42,18 @@ class FrameController {
         let targetRect = self.getContentRect()
         try window.resize(size: targetRect.size)
         try window.move(to: targetRect.origin)
+    }
+
+    func nextWindow() {
+        self.activeIndex = self.activeIndex + 1 >= self.windows.count ? 0 : self.activeIndex + 1
+        self.activeWindow?.raise()
+        self.refreshOverlay()
+    }
+
+    func previousWindow() {
+        self.activeIndex = self.activeIndex <= 0 ? self.windows.count - 1 : self.activeIndex - 1
+        self.activeWindow?.raise()
+        self.refreshOverlay()
     }
 
     func split(direction: Direction) throws {

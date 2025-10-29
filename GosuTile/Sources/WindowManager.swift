@@ -22,7 +22,7 @@ class WindowManager {
         self.windows = getAllWindows()
 
         for w in self.windows {
-            logger.debug("Found window: \(w.appName): \(w.title)")
+            logger.debug("Found window: [\(w.size)] \(w.appName): \(w.title)")
         }
 
         self.initializeLayout()
@@ -33,6 +33,14 @@ class WindowManager {
         if let frame = self.activeFrame {
             try frame.addWindow(window)
         }
+    }
+
+    func nextWindow() {
+        self.activeFrame?.nextWindow()
+    }
+
+    func previousWindow() {
+        self.activeFrame?.previousWindow()
     }
 
     func splitHorizontally() throws {
@@ -74,18 +82,53 @@ class WindowManager {
     private func getAllWindows() -> [WindowController] {
         var windows: [WindowController] = []
 
-        for app in NSWorkspace.shared.runningApplications {
-            guard app.activationPolicy == .regular else { continue }
+        for app in getApplicationsSortedByZIndex() {
+            guard app.activationPolicy == .regular && !app.isHidden else { continue }
 
             let appElement = AXUIElementCreateApplication(app.processIdentifier)
             var windowsRef: CFTypeRef?
             let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
 
             if result == .success, let windowList = windowsRef as? [AXUIElement] {
-                windows += windowList.compactMap { WindowController.fromElement($0) }
+                windows += windowList.compactMap { return WindowController.fromElement($0) }
             }
         }
 
         return windows
+    }
+
+    private func getApplicationsSortedByZIndex() -> [NSRunningApplication] {
+        let apps = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+
+        // Get window list in front-to-back order
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return apps
+        }
+
+        // Map PID to lowest (frontmost) window index
+        var pidToZIndex: [pid_t: Int] = [:]
+
+        for (index, windowInfo) in windowList.enumerated() {
+            if let pid = windowInfo[kCGWindowOwnerPID as String] as? pid_t {
+                // Only store the first (frontmost) window for each PID
+                if pidToZIndex[pid] == nil {
+                    pidToZIndex[pid] = index
+                }
+            }
+        }
+
+        return apps
+            // Filter apps with nil zIndex, likely on different screen
+            .filter { pidToZIndex[$0.processIdentifier] != nil }
+            // Sort apps by their frontmost window's z-index
+            .sorted { app1, app2 in
+            let z1 = pidToZIndex[app1.processIdentifier] ?? Int.max
+            let z2 = pidToZIndex[app2.processIdentifier] ?? Int.max
+            return z1 < z2  // Lower index = more in front
+        }
     }
 }
