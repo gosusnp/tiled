@@ -13,14 +13,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     override init() {
         self.logger = Logger()
-        self.wm = WindowManager(logger: logger)
-        self.hm = HotkeyManager(windowManager: self.wm)
+        self.wm = WindowManager(logger: self.logger)
+        self.hm = HotkeyManager(windowManager: self.wm, logger: self.logger)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         self.ensureAccessibilityPermissions()
         self.wm.initialize()
-        self.hm.registerHotkeys()
 
         logger.info(
         """
