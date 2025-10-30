@@ -5,8 +5,7 @@ import Cocoa
 import Carbon
 
 // MARK: - HotkeyManager
-@MainActor
-class HotkeyManager: ObservableObject {
+class HotkeyManager: ObservableObject, @unchecked Sendable {
     private let windowManager: WindowManager
     private let logger: Logger
 
@@ -140,19 +139,25 @@ class HotkeyManager: ObservableObject {
         self.runLoopSource = runLoopSource
 
         // Set up shared state accessor
-        queue.sync {
-            HotkeyManager.shared = self
-        }
+        HotkeyManager.sharedLock.lock()
+        HotkeyManager.shared = self
+        HotkeyManager.sharedLock.unlock()
 
         self.logger.debug("Event tap created successfully")
     }
 
     // MARK: - Static handler for C callback
-    private static var shared: HotkeyManager?
+    private static let sharedLock = NSLock()
+    nonisolated(unsafe) private static var shared: HotkeyManager?
 
-    private static func handleEventStatic(type: CGEventType, event: CGEvent) -> Bool {
+    nonisolated private static func handleEventStatic(type: CGEventType, event: CGEvent) -> Bool {
         guard type == .keyDown else { return false }
-        guard let manager = shared else { return false }
+
+        sharedLock.lock()
+        let manager = shared
+        sharedLock.unlock()
+
+        guard let manager = manager else { return false }
 
         return manager.handleEventSync(event: event)
     }
@@ -175,7 +180,7 @@ class HotkeyManager: ObservableObject {
             Task { @MainActor in
                 matchedShortcut.action()
             }
-            resetSequence()
+            scheduleResetSequence()
             return true // Block the event
         }
 
@@ -185,7 +190,7 @@ class HotkeyManager: ObservableObject {
         }
 
         // Not a valid sequence, reset and pass through
-        resetSequence()
+        scheduleResetSequence()
         return false
     }
 
@@ -250,30 +255,41 @@ class HotkeyManager: ObservableObject {
         sequenceTimer = nil
     }
 
-    nonisolated func stopMonitoring() {
-        Task { @MainActor in
-            queue.sync {
-                if let eventTap = eventTap {
-                    CGEvent.tapEnable(tap: eventTap, enable: false)
-                    CFMachPortInvalidate(eventTap)
-                    self.eventTap = nil
-                }
-
-                if let runLoopSource = runLoopSource {
-                    CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
-                    self.runLoopSource = nil
-                }
-
-                // Clean up context pointer
-                if let context = contextPointer {
-                    context.deinitialize(count: 1)
-                    context.deallocate()
-                    self.contextPointer = nil
-                }
-
-                sequenceTimer?.cancel()
-                sequenceTimer = nil
-            }
+    private func scheduleResetSequence() {
+        let weakSelf: HotkeyManager? = self
+        queue.async {
+            guard let self = weakSelf else { return }
+            self.resetSequence()
         }
+    }
+
+    func stopMonitoring() {
+        queue.sync {
+            if let eventTap = eventTap {
+                CGEvent.tapEnable(tap: eventTap, enable: false)
+                CFMachPortInvalidate(eventTap)
+                self.eventTap = nil
+            }
+
+            if let runLoopSource = runLoopSource {
+                CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+                self.runLoopSource = nil
+            }
+
+            // Clean up context pointer
+            if let context = contextPointer {
+                context.deinitialize(count: 1)
+                context.deallocate()
+                self.contextPointer = nil
+            }
+
+            sequenceTimer?.cancel()
+            sequenceTimer = nil
+        }
+
+        // Clean up shared reference
+        HotkeyManager.sharedLock.lock()
+        HotkeyManager.shared = nil
+        HotkeyManager.sharedLock.unlock()
     }
 }
