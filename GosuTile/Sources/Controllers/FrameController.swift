@@ -7,7 +7,7 @@ import ApplicationServices
 @MainActor
 class FrameController {
     let config: ConfigController
-    let frame: FrameModel
+    private let geometry: FrameGeometry
     let frameWindow: FrameWindow
 
     var children: [FrameController] = []
@@ -15,12 +15,19 @@ class FrameController {
     var activeIndex = 0;
 
     var activeWindow: WindowController? {
-        self.windows[activeIndex]
+        guard !windows.isEmpty && activeIndex < windows.count else { return nil }
+        return self.windows[activeIndex]
     }
 
-    init(frame: FrameModel, config: ConfigController) {
+    init(rect: CGRect, config: ConfigController) {
         self.config = config
-        self.frame = frame
+        self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
+        self.frameWindow = FrameWindow()
+    }
+
+    private init(geometry: FrameGeometry, config: ConfigController) {
+        self.config = config
+        self.geometry = geometry
         self.frameWindow = FrameWindow()
     }
 
@@ -29,7 +36,7 @@ class FrameController {
             TabInfo(title: w.title, isActive: index == self.activeIndex)
         }
         self.frameWindow.updateOverlay(
-            rect: self.getTitleBarRect(),
+            rect: self.geometry.titleBarRect,
             tabs: tabs,
         )
     }
@@ -39,7 +46,7 @@ class FrameController {
         self.windows.append(window)
 
         // resize window to frame size
-        let targetRect = self.getContentRect()
+        let targetRect = self.geometry.contentRect
         try window.resize(size: targetRect.size)
         try window.move(to: targetRect.origin)
     }
@@ -57,13 +64,15 @@ class FrameController {
     }
 
     func split(direction: Direction) throws {
-        precondition(self.frame.direction == nil)
-        self.frame.direction = direction
+        precondition(self.children.isEmpty)
 
-        switch direction {
-            case Direction.Horizontal: self.splitHorizontally()
-            case Direction.Vertical: self.splitVertically()
-        }
+        let (geo1, geo2) = direction == .Horizontal
+            ? self.geometry.splitHorizontally()
+            : self.geometry.splitVertically()
+
+        let child1 = FrameController(geometry: geo1, config: self.config)
+        let child2 = FrameController(geometry: geo2, config: self.config)
+        self.children = [child1, child2]
 
         let windowsToMove = self.windows
         self.windows = []
@@ -74,94 +83,11 @@ class FrameController {
     }
 
     func toString() -> String {
-        return "Frame(rect=\(self.frame.rect))"
-    }
-
-    private func splitHorizontally() {
-        let yshift = self.frame.rect.size.height / 2
-        let f1 = FrameController.fromRect(
-            CGRect(
-                x: self.frame.rect.origin.x,
-                y: self.frame.rect.origin.y,
-                width: self.frame.rect.size.width,
-                height: yshift,
-            ),
-            config: self.config,
-        )
-        let f2 = FrameController.fromRect(
-            CGRect(
-                x: self.frame.rect.origin.x,
-                y: self.frame.rect.origin.y + yshift,
-                width: self.frame.rect.size.width,
-                height: yshift,
-            ),
-            config: self.config,
-        )
-        self.children.append(f1)
-        self.children.append(f2)
-    }
-
-    private func splitVertically() {
-        let xshift = self.frame.rect.size.width / 2
-        let f1 = FrameController.fromRect(
-            CGRect(
-                x: self.frame.rect.origin.x,
-                y: self.frame.rect.origin.y,
-                width: xshift,
-                height: self.frame.rect.size.height,
-            ),
-            config: self.config,
-        )
-        let f2 = FrameController.fromRect(
-            CGRect(
-                x: self.frame.rect.origin.x + xshift,
-                y: self.frame.rect.origin.y,
-                width: xshift,
-                height: self.frame.rect.size.height,
-            ),
-            config: self.config,
-        )
-        self.children.append(f1)
-        self.children.append(f2)
-    }
-
-    private func getTitleBarRect() -> CGRect {
-        return CGRect(
-            x: self.frame.rect.origin.x,
-            y: self.frame.rect.origin.y + self.frame.rect.size.height - self.config.titleBarHeight,
-            width: self.frame.rect.size.width,
-            height: self.config.titleBarHeight,
-        )
-    }
-
-    private func getContentRect() -> CGRect {
-        return CGRect(
-            x: self.frame.rect.origin.x,
-            y: self.frame.rect.origin.y + self.config.titleBarHeight,
-            width: self.frame.rect.size.width,
-            height: self.frame.rect.size.height - self.config.titleBarHeight,
-        )
-    }
-
-    static func fromRect(_ rect: CGRect, config: ConfigController) -> FrameController {
-        return FrameController(
-            frame: FrameModel(rect: rect),
-            config: config,
-        )
+        return "Frame(rect=\(self.geometry.rect))"
     }
 
     static func fromScreen(_ screen: NSScreen, config: ConfigController) -> FrameController {
-        let menubarHeight = screen.frame.height - screen.visibleFrame.height - (screen.visibleFrame.minY - screen.frame.minY)
-
-        let bounds = screen.visibleFrame
-        return FrameController.fromRect(
-            CGRect(
-                x: bounds.minX,
-                y: bounds.minY + menubarHeight,
-                width: bounds.width,
-                height: bounds.height,
-            ),
-            config: config,
-        )
+        let geometry = FrameGeometry.fromScreen(screen, titleBarHeight: config.titleBarHeight)
+        return FrameController(rect: geometry.rect, config: config)
     }
 }

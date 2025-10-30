@@ -11,5 +11,9 @@ let package = Package(
     ],
     targets: [
         .executableTarget(name: "GosuTile"),
+        .testTarget(
+            name: "GosuTileTests",
+            dependencies: ["GosuTile"]
+        ),
     ]
 )
