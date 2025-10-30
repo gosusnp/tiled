@@ -9,41 +9,37 @@ class FrameController {
     let config: ConfigController
     private let geometry: FrameGeometry
     let frameWindow: FrameWindow
+    let windowStack: WindowStackController
 
     var children: [FrameController] = []
-    var windows: [WindowController] = []
-    var activeIndex = 0;
 
     var activeWindow: WindowController? {
-        guard !windows.isEmpty && activeIndex < windows.count else { return nil }
-        return self.windows[activeIndex]
+        self.windowStack.activeWindow
     }
 
     init(rect: CGRect, config: ConfigController) {
         self.config = config
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
         self.frameWindow = FrameWindow()
+        self.windowStack = WindowStackController()
     }
 
     private init(geometry: FrameGeometry, config: ConfigController) {
         self.config = config
         self.geometry = geometry
         self.frameWindow = FrameWindow()
+        self.windowStack = WindowStackController()
     }
 
     func refreshOverlay() {
-        let tabs = self.windows.enumerated().map { (index, w) in
-            TabInfo(title: w.title, isActive: index == self.activeIndex)
-        }
         self.frameWindow.updateOverlay(
             rect: self.geometry.titleBarRect,
-            tabs: tabs,
+            tabs: self.windowStack.tabs,
         )
     }
 
     func addWindow(_ window: WindowController) throws {
-        // TODO check for duplicate before inserting
-        self.windows.append(window)
+        try self.windowStack.add(window)
 
         // resize window to frame size
         let targetRect = self.geometry.contentRect
@@ -52,13 +48,13 @@ class FrameController {
     }
 
     func nextWindow() {
-        self.activeIndex = self.activeIndex + 1 >= self.windows.count ? 0 : self.activeIndex + 1
+        self.windowStack.nextWindow()
         self.activeWindow?.raise()
         self.refreshOverlay()
     }
 
     func previousWindow() {
-        self.activeIndex = self.activeIndex <= 0 ? self.windows.count - 1 : self.activeIndex - 1
+        self.windowStack.previousWindow()
         self.activeWindow?.raise()
         self.refreshOverlay()
     }
@@ -74,11 +70,10 @@ class FrameController {
         let child2 = FrameController(geometry: geo2, config: self.config)
         self.children = [child1, child2]
 
-        let windowsToMove = self.windows
-        self.windows = []
-        let targetFrame = self.children[0]
+        let windowsToMove = self.windowStack.all
         for w in windowsToMove {
-            try targetFrame.addWindow(w)
+            _ = self.windowStack.remove(w)
+            try child1.addWindow(w)
         }
     }
 

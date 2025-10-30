@@ -76,4 +76,9 @@ class FrameGeometry {
             titleBarHeight: titleBarHeight
         )
     }
+
+    // TODO: Extract menubar height calculation into testable helper function
+    // This will allow proper unit testing of the calculation logic without
+    // depending on NSScreen, which is difficult to mock.
+    // See: Tests/GosuTileTests/Services/FrameGeometryTests.swift
 }

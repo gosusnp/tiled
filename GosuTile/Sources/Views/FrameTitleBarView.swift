@@ -3,16 +3,6 @@
 
 import Cocoa
 
-class TabInfo {
-    let title: String
-    let isActive: Bool
-
-    init(title: String, isActive: Bool) {
-        self.title = title
-        self.isActive = isActive
-    }
-}
-
 // MARK: - Tabs
 class FrameTitleBarTabView: NSView {
     private let title: String
@@ -73,7 +63,7 @@ class FrameTitleBarTabView: NSView {
 }
 
 class FrameTitleBarView: NSView {
-    func setupTabs(tabs: [TabInfo]) {
+    func setupTabs(tabs: [WindowTab]) {
         // Clear existing subviews
         self.subviews.forEach { $0.removeFromSuperview() }
 

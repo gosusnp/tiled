@@ -1,0 +1,222 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Jimmy Ma
+
+import Cocoa
+import Testing
+@testable import GosuTile
+
+// Mock WindowController for testing
+class MockWindowController: WindowController {
+    init(title: String) {
+        // Create a minimal WindowModel for testing
+        let element = AXUIElementCreateApplication(0)
+        let windowModel = WindowModel(element: element, title: title, appName: "MockApp")
+        super.init(window: windowModel)
+    }
+}
+
+@Suite("WindowStackController Tests")
+@MainActor
+struct WindowStackControllerTests {
+    @Test("Initializes with empty stack")
+    func testInitialization() {
+        let stack = WindowStackController()
+
+        #expect(stack.count == 0)
+        #expect(stack.all.isEmpty)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow == nil)
+    }
+
+    @Test("Adds a window to the stack")
+    func testAddWindow() throws {
+        let stack = WindowStackController()
+        let window = MockWindowController(title: "Window 1")
+
+        try stack.add(window)
+
+        #expect(stack.count == 1)
+        #expect(stack.all.count == 1)
+        #expect(stack.activeWindow === window)
+    }
+
+    @Test("Rejects duplicate windows")
+    func testAddDuplicateWindow() throws {
+        let stack = WindowStackController()
+        let window = MockWindowController(title: "Window 1")
+
+        try stack.add(window)
+
+        // Try to add the same window again - should throw
+        do {
+            try stack.add(window)
+            Issue.record("Expected WindowStackError but no error was thrown")
+        } catch let error as WindowStackError {
+            #expect(error == .duplicateWindow)
+        } catch {
+            Issue.record("Unexpected error type: \(error)")
+        }
+    }
+
+    @Test("Cycles to next window")
+    func testNextWindow() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try stack.add(window1)
+        try stack.add(window2)
+        try stack.add(window3)
+
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window1)
+
+        stack.nextWindow()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.activeWindow === window2)
+
+        stack.nextWindow()
+        #expect(stack.activeIndex == 2)
+        #expect(stack.activeWindow === window3)
+
+        // Wraps around
+        stack.nextWindow()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window1)
+    }
+
+    @Test("Cycles to previous window")
+    func testPreviousWindow() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try stack.add(window1)
+        try stack.add(window2)
+        try stack.add(window3)
+
+        #expect(stack.activeIndex == 0)
+
+        stack.previousWindow()
+        #expect(stack.activeIndex == 2)
+        #expect(stack.activeWindow === window3)
+
+        stack.previousWindow()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.activeWindow === window2)
+
+        stack.previousWindow()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window1)
+    }
+
+    @Test("Removes a window and adjusts activeIndex")
+    func testRemoveWindow() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try stack.add(window1)
+        try stack.add(window2)
+        try stack.add(window3)
+
+        #expect(stack.count == 3)
+        #expect(stack.activeIndex == 0)
+
+        // Remove the first window
+        let removed = stack.remove(window1)
+        #expect(removed)
+        #expect(stack.count == 2)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window2)
+    }
+
+    @Test("Removes middle window and adjusts activeIndex")
+    func testRemoveMiddleWindow() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try stack.add(window1)
+        try stack.add(window2)
+        try stack.add(window3)
+
+        stack.nextWindow()
+        stack.nextWindow()
+        #expect(stack.activeIndex == 2)
+
+        // Remove middle window
+        let removed = stack.remove(window2)
+        #expect(removed)
+        #expect(stack.count == 2)
+        #expect(stack.activeIndex == 1) // Decremented because removed index < activeIndex
+        #expect(stack.activeWindow === window3)
+    }
+
+    @Test("Handles removing last window with activeIndex adjustment")
+    func testRemoveLastWindow() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try stack.add(window1)
+        try stack.add(window2)
+
+        stack.nextWindow()
+        #expect(stack.activeIndex == 1)
+
+        // Remove the active window (last one)
+        let removed = stack.remove(window2)
+        #expect(removed)
+        #expect(stack.count == 1)
+        #expect(stack.activeIndex == 0) // Adjusted to valid index
+        #expect(stack.activeWindow === window1)
+    }
+
+    @Test("Returns false when removing non-existent window")
+    func testRemoveNonExistentWindow() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try stack.add(window1)
+
+        let removed = stack.remove(window2)
+        #expect(!removed)
+        #expect(stack.count == 1)
+        #expect(stack.activeWindow === window1)
+    }
+
+    @Test("nextWindow does nothing on empty stack")
+    func testNextWindowOnEmpty() {
+        let stack = WindowStackController()
+
+        stack.nextWindow()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow == nil)
+    }
+
+    @Test("previousWindow does nothing on empty stack")
+    func testPreviousWindowOnEmpty() {
+        let stack = WindowStackController()
+
+        stack.previousWindow()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow == nil)
+    }
+
+    @Test("Returns correct activeWindow when stack has one window")
+    func testActiveWindowWithSingleWindow() throws {
+        let stack = WindowStackController()
+        let window = MockWindowController(title: "Window 1")
+
+        try stack.add(window)
+
+        #expect(stack.activeWindow === window)
+        #expect(stack.activeIndex == 0)
+    }
+}

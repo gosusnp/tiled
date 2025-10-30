@@ -35,7 +35,7 @@ class FrameWindow {
         self.window = panel
     }
 
-    func updateOverlay(rect: CGRect, tabs: [TabInfo]) {
+    func updateOverlay(rect: CGRect, tabs: [WindowTab]) {
         self.window.setFrame(rect, display: true)
         self.titleBarView?.setupTabs(tabs: tabs)
     }
