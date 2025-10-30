@@ -12,6 +12,7 @@ class HotkeyManager: ObservableObject {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var contextPointer: UnsafeMutablePointer<DispatchQueue>?
     private let queue = DispatchQueue(label: "com.hotkey.sequence", qos: .userInteractive)
     private var sequenceBuffer: [(key: Key, modifiers: CGEventFlags)] = []
     private var sequenceTimer: DispatchSourceTimer?
@@ -124,11 +125,13 @@ class HotkeyManager: ObservableObject {
             self.logger.error(
                 "Failed to create event tap. Make sure Accessibility permissions are granted."
             )
+            context.deinitialize(count: 1)
             context.deallocate()
             return
         }
 
         self.eventTap = eventTap
+        self.contextPointer = context
 
         let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
@@ -261,6 +264,13 @@ class HotkeyManager: ObservableObject {
                 if let runLoopSource = runLoopSource {
                     CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
                     self.runLoopSource = nil
+                }
+
+                // Clean up context pointer
+                if let context = contextPointer {
+                    context.deinitialize(count: 1)
+                    context.deallocate()
+                    self.contextPointer = nil
                 }
 
                 sequenceTimer?.cancel()
