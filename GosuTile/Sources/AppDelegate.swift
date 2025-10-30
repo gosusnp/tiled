@@ -8,13 +8,13 @@ import Cocoa
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     let logger: Logger
-    let hm: HotkeyManager
+    let hm: HotkeyController
     let wm: WindowManager
 
     override init() {
         self.logger = Logger()
         self.wm = WindowManager(logger: self.logger)
-        self.hm = HotkeyManager(windowManager: self.wm, logger: self.logger)
+        self.hm = HotkeyController(windowManager: self.wm, logger: self.logger)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

@@ -4,19 +4,7 @@
 import Cocoa
 import Carbon
 
-// MARK: - HotkeyManager
-class HotkeyManager: ObservableObject, @unchecked Sendable {
-    private let windowManager: WindowManager
-    private let logger: Logger
-
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
-    private var contextPointer: UnsafeMutablePointer<DispatchQueue>?
-    private let queue = DispatchQueue(label: "com.hotkey.sequence", qos: .userInteractive)
-    private var sequenceBuffer: [(key: Key, modifiers: CGEventFlags)] = []
-    private var sequenceTimer: DispatchSourceTimer?
-    private let sequenceTimeout: TimeInterval = 1.5
-
+class HotkeyService: @unchecked Sendable {
     enum Key: Equatable {
         case character(String)
         case keyCode(Int64)
@@ -41,51 +29,29 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
         let description: String
     }
 
-    private var shortcuts: [Shortcut] = []
+    let logger: Logger
+    private(set) var shortcuts: [Shortcut] = []
 
-    init(windowManager: WindowManager, logger: Logger) {
-        self.windowManager = windowManager
+    private var eventTap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+    private var contextPointer: UnsafeMutablePointer<DispatchQueue>?
+    private let queue = DispatchQueue(label: "com.hotkey.sequence", qos: .userInteractive)
+    private var sequenceBuffer: [(key: Key, modifiers: CGEventFlags)] = []
+    private var sequenceTimer: DispatchSourceTimer?
+    private let sequenceTimeout: TimeInterval = 1.5
+    private let relevantModifiers: CGEventFlags = [.maskCommand, .maskShift, .maskAlternate, .maskControl]
+
+    init(logger: Logger) {
         self.logger = logger
-
-        registerDefaultShortcuts()
         setupEventTap()
     }
 
     deinit {
-        stopMonitoring()
+        // Cleanup is handled via stopMonitoring() which should be called explicitly
+        // or triggered through HotkeyController's deinit
     }
 
-    // MARK: - Register Shortcuts
-    private func registerDefaultShortcuts() {
-        let wm = self.windowManager
-
-        addShortcut(
-            steps: [
-                (.character("g"), .maskCommand),
-                (.character("n"), [])
-            ],
-            description: "cmd+g, n: next window",
-            action: {
-                Task { @MainActor in
-                    wm.nextWindow()
-                }
-            }
-        )
-
-        addShortcut(
-            steps: [
-                (.character("g"), .maskCommand),
-                (.character("p"), [])
-            ],
-            description: "cmd+g, p: previous window",
-            action: {
-                Task { @MainActor in
-                    wm.previousWindow()
-                }
-            }
-        )
-    }
-
+    // MARK: - Shortcut Management
     func addShortcut(steps: [(key: Key, modifiers: CGEventFlags)],
                      description: String,
                      action: @escaping @Sendable () -> Void) {
@@ -114,7 +80,7 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
                 // Handle on our serial queue to avoid data races
                 var shouldBlock = false
                 queue.sync {
-                    shouldBlock = HotkeyManager.handleEventStatic(type: type, event: event)
+                    shouldBlock = HotkeyService.handleEventStatic(type: type, event: event)
                 }
 
                 return shouldBlock ? nil : Unmanaged.passRetained(event)
@@ -139,27 +105,27 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
         self.runLoopSource = runLoopSource
 
         // Set up shared state accessor
-        HotkeyManager.sharedLock.lock()
-        HotkeyManager.shared = self
-        HotkeyManager.sharedLock.unlock()
+        HotkeyService.sharedLock.lock()
+        HotkeyService.shared = self
+        HotkeyService.sharedLock.unlock()
 
         self.logger.debug("Event tap created successfully")
     }
 
     // MARK: - Static handler for C callback
-    private static let sharedLock = NSLock()
-    nonisolated(unsafe) private static var shared: HotkeyManager?
+    nonisolated private static let sharedLock = NSLock()
+    nonisolated(unsafe) private static var shared: HotkeyService?
 
     nonisolated private static func handleEventStatic(type: CGEventType, event: CGEvent) -> Bool {
         guard type == .keyDown else { return false }
 
         sharedLock.lock()
-        let manager = shared
+        let observer = shared
         sharedLock.unlock()
 
-        guard let manager = manager else { return false }
+        guard let observer = observer else { return false }
 
-        return manager.handleEventSync(event: event)
+        return observer.handleEventSync(event: event)
     }
 
     private func handleEventSync(event: CGEvent) -> Bool {
@@ -167,7 +133,7 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
             return false
         }
 
-        let modifiers = event.flags.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl])
+        let modifiers = event.flags.intersection(relevantModifiers)
 
         // Add to sequence buffer
         sequenceBuffer.append((key, modifiers))
@@ -206,21 +172,23 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
         sequenceTimer = timer
     }
 
+    private func stepMatches(_ step: (key: Key, modifiers: CGEventFlags), bufferStep: (key: Key, modifiers: CGEventFlags)) -> Bool {
+        if step.key != bufferStep.key {
+            return false
+        }
+
+        let requiredModifiers = step.modifiers.intersection(relevantModifiers)
+        let actualModifiers = bufferStep.modifiers.intersection(relevantModifiers)
+
+        return requiredModifiers == actualModifiers
+    }
+
     private func findMatchingShortcut() -> Shortcut? {
         return shortcuts.first { shortcut in
             guard shortcut.steps.count == sequenceBuffer.count else { return false }
 
             for (index, step) in shortcut.steps.enumerated() {
-                let bufferStep = sequenceBuffer[index]
-                if step.key != bufferStep.key {
-                    return false
-                }
-
-                // Check if modifiers match
-                let requiredModifiers = step.modifiers.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl])
-                let actualModifiers = bufferStep.modifiers.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl])
-
-                if requiredModifiers != actualModifiers {
+                if !self.stepMatches(step, bufferStep: self.sequenceBuffer[index]) {
                     return false
                 }
             }
@@ -233,15 +201,7 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
             guard shortcut.steps.count >= sequenceBuffer.count else { return false }
 
             for (index, bufferStep) in sequenceBuffer.enumerated() {
-                let shortcutStep = shortcut.steps[index]
-                if shortcutStep.key != bufferStep.key {
-                    return false
-                }
-
-                let requiredModifiers = shortcutStep.modifiers.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl])
-                let actualModifiers = bufferStep.modifiers.intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl])
-
-                if requiredModifiers != actualModifiers {
+                if !self.stepMatches(shortcut.steps[index], bufferStep: bufferStep) {
                     return false
                 }
             }
@@ -256,7 +216,7 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
     }
 
     private func scheduleResetSequence() {
-        let weakSelf: HotkeyManager? = self
+        let weakSelf: HotkeyService? = self
         queue.async {
             guard let self = weakSelf else { return }
             self.resetSequence()
@@ -288,8 +248,8 @@ class HotkeyManager: ObservableObject, @unchecked Sendable {
         }
 
         // Clean up shared reference
-        HotkeyManager.sharedLock.lock()
-        HotkeyManager.shared = nil
-        HotkeyManager.sharedLock.unlock()
+        HotkeyService.sharedLock.lock()
+        HotkeyService.shared = nil
+        HotkeyService.sharedLock.unlock()
     }
 }
