@@ -195,9 +195,7 @@ class HotkeyManager: ObservableObject {
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now() + sequenceTimeout)
         timer.setEventHandler { [weak self] in
-            self?.queue.sync {
-                self?.resetSequence()
-            }
+            self?.resetSequence()
         }
         timer.resume()
         sequenceTimer = timer
