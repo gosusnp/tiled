@@ -52,6 +52,14 @@ class WindowStackController {
         return true
     }
 
+    func takeAll(from other: WindowStackController) throws {
+        for window in other.all {
+            try self.add(window)
+        }
+        other.windows = []
+        other.activeIndex = 0
+    }
+
     // Window cycling
     func nextWindow() {
         guard !windows.isEmpty else { return }

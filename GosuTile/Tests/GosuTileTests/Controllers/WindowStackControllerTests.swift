@@ -219,4 +219,75 @@ struct WindowStackControllerTests {
         #expect(stack.activeWindow === window)
         #expect(stack.activeIndex == 0)
     }
+
+    @Test("Takes all windows from one stack to another")
+    func testTakeAll() throws {
+        let sourceStack = WindowStackController()
+        let targetStack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try sourceStack.add(window1)
+        try sourceStack.add(window2)
+        try sourceStack.add(window3)
+
+        // Take all from source to target
+        try targetStack.takeAll(from: sourceStack)
+
+        // Verify target has all windows
+        #expect(targetStack.count == 3)
+        #expect(targetStack.all.count == 3)
+        #expect(targetStack.all[0] === window1)
+        #expect(targetStack.all[1] === window2)
+        #expect(targetStack.all[2] === window3)
+    }
+
+    @Test("Clears source stack after takeAll")
+    func testTakeAllClearsSource() throws {
+        let sourceStack = WindowStackController()
+        let targetStack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try sourceStack.add(window1)
+        try sourceStack.add(window2)
+
+        #expect(sourceStack.count == 2)
+
+        try targetStack.takeAll(from: sourceStack)
+
+        // Verify source is empty
+        #expect(sourceStack.count == 0)
+        #expect(sourceStack.all.isEmpty)
+        #expect(sourceStack.activeIndex == 0)
+        #expect(sourceStack.activeWindow == nil)
+    }
+
+    @Test("TakeAll with target stack that already has windows")
+    func testTakeAllToNonEmptyTarget() throws {
+        let sourceStack = WindowStackController()
+        let targetStack = WindowStackController()
+        let existing = MockWindowController(title: "Existing")
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        // Target already has a window
+        try targetStack.add(existing)
+
+        // Source has windows to take
+        try sourceStack.add(window1)
+        try sourceStack.add(window2)
+
+        try targetStack.takeAll(from: sourceStack)
+
+        // Verify target has all windows (existing + moved)
+        #expect(targetStack.count == 3)
+        #expect(targetStack.all[0] === existing)
+        #expect(targetStack.all[1] === window1)
+        #expect(targetStack.all[2] === window2)
+
+        // Verify source is empty
+        #expect(sourceStack.count == 0)
+    }
 }

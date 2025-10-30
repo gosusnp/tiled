@@ -59,6 +59,18 @@ class FrameController {
         self.refreshOverlay()
     }
 
+    private func takeWindowsFrom(_ other: FrameController) throws {
+        // Transfer windows to this frame's stack
+        try self.windowStack.takeAll(from: other.windowStack)
+
+        // Reposition all windows to fit this frame
+        let targetRect = self.geometry.contentRect
+        for w in self.windowStack.all {
+            try w.resize(size: targetRect.size)
+            try w.move(to: targetRect.origin)
+        }
+    }
+
     func split(direction: Direction) throws {
         precondition(self.children.isEmpty)
 
@@ -70,11 +82,7 @@ class FrameController {
         let child2 = FrameController(geometry: geo2, config: self.config)
         self.children = [child1, child2]
 
-        let windowsToMove = self.windowStack.all
-        for w in windowsToMove {
-            _ = self.windowStack.remove(w)
-            try child1.addWindow(w)
-        }
+        try child1.takeWindowsFrom(self)
     }
 
     func toString() -> String {
