@@ -63,7 +63,21 @@ class FrameTitleBarView: NSView {
         // Clear existing subviews
         self.subviews.forEach { $0.removeFromSuperview() }
 
-        guard !tabs.isEmpty else { return }
+        guard !tabs.isEmpty else {
+            let tabRect = NSRect(
+                x: self.bounds.minX,
+                y: self.bounds.minY,
+                width: self.bounds.width,
+                height: self.bounds.height,
+            )
+            let tab = FrameTitleBarTabView(
+                frame: tabRect,
+                title: "",
+                style: StyleProvider().getStyle(isActive: false),
+            )
+            addSubview(tab)
+            return
+        }
 
         let tabWidth = self.bounds.width / CGFloat(tabs.count)
         let tabHeight = self.bounds.height
@@ -73,7 +87,7 @@ class FrameTitleBarView: NSView {
                 x: self.bounds.minX + CGFloat(index) * tabWidth,
                 y: self.bounds.minY,
                 width: tabWidth,
-                height: tabHeight
+                height: tabHeight,
             )
 
             let tab = FrameTitleBarTabView(
