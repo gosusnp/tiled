@@ -21,7 +21,24 @@ class WindowManager {
     func initialize() {
         self.logger.debug("Initializing WindowManager")
 
-        // Set up event subscriptions
+        self.initializeLayout()
+
+        // Start tracking to discover existing windows
+        self.tracker.startTracking()
+
+        // Manually add existing windows without focus
+        for window in self.tracker.getWindows() {
+            let windowController = WindowController.fromElement(window)
+            do {
+                try assignWindow(windowController, shouldFocus: false)
+            } catch {
+                self.logger.warning("Failed to assign initial window: \(error)")
+            }
+        }
+
+        self.rootFrame?.refreshOverlay()
+
+        // Now register callback for new windows
         tracker.onWindowOpened = { [weak self] element in
             self?.onWindowOpened(element)
         }
@@ -29,17 +46,17 @@ class WindowManager {
         tracker.onWindowClosed = { [weak self] element in
             self?.onWindowClosed(element)
         }
-
-        self.initializeLayout()
-        self.tracker.startTracking()
-        self.rootFrame?.refreshOverlay()
     }
 
-    func assignWindow(_ window: WindowController) throws {
+    func assignWindow(_ window: WindowController, shouldFocus: Bool) throws {
         guard let frame = self.activeFrame else { return }
-        try frame.addWindow(window)
+        try frame.addWindow(window, shouldFocus: shouldFocus)
         frame.refreshOverlay()
-        frame.activeWindow?.raise()
+        if shouldFocus {
+            // Give the window a moment to settle after resize/move before focusing
+            usleep(50_000)  // 50ms delay
+            window.raise()
+        }
     }
 
     func nextWindow() {
@@ -67,7 +84,8 @@ class WindowManager {
     private func onWindowOpened(_ element: AXUIElement) {
         let window = WindowController.fromElement(element)
         do {
-            try assignWindow(window)
+            // Runtime windows (new windows created after initialization)
+            try assignWindow(window, shouldFocus: true)
         } catch {
             self.logger.warning("Failed to assign window: \(error)")
         }

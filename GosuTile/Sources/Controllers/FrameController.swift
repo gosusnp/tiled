@@ -38,8 +38,8 @@ class FrameController {
         )
     }
 
-    func addWindow(_ window: WindowController) throws {
-        try self.windowStack.add(window)
+    func addWindow(_ window: WindowController, shouldFocus: Bool = false) throws {
+        try self.windowStack.add(window, shouldFocus: shouldFocus)
 
         // resize window to frame size
         let targetRect = self.geometry.contentRect

@@ -290,4 +290,37 @@ struct WindowStackControllerTests {
         // Verify source is empty
         #expect(sourceStack.count == 0)
     }
+
+    @Test("Adding window with shouldFocus=true makes it active")
+    func testAddWindowWithFocus() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try stack.add(window1)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window1)
+
+        // Add second window with shouldFocus=true
+        try stack.add(window2, shouldFocus: true)
+        #expect(stack.activeIndex == 1)
+        #expect(stack.activeWindow === window2)
+    }
+
+    @Test("Adding window with shouldFocus=false keeps previous active")
+    func testAddWindowWithoutFocus() throws {
+        let stack = WindowStackController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try stack.add(window1)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window1)
+
+        // Add second window with shouldFocus=false (default)
+        try stack.add(window2, shouldFocus: false)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.activeWindow === window1)
+        #expect(stack.count == 2)
+    }
 }

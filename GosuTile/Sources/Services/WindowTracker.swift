@@ -55,10 +55,8 @@ class WindowTracker: @unchecked Sendable {
 
         self.logger.debug("Discovered \(self.windows.count) windows")
 
-        // Notify subscribers about existing windows in order
-        for window in self.windows {
-            self.onWindowOpened?(window)
-        }
+        // Note: onWindowOpened callback is NOT called here
+        // The app will manually handle initial windows via getWindows()
 
         // Wire observer callbacks for real-time detection
         self.observer.onWindowCreated = { [weak self] element in

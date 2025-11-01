@@ -29,12 +29,15 @@ class WindowStackController {
     }
 
     // Window management
-    func add(_ window: WindowController) throws {
+    func add(_ window: WindowController, shouldFocus: Bool = false) throws {
         // Validate no duplicates
         guard !windows.contains(where: { $0 === window }) else {
             throw WindowStackError.duplicateWindow
         }
         windows.append(window)
+        if shouldFocus {
+            activeIndex = windows.count - 1  // Make new window active
+        }
     }
 
     func remove(_ window: WindowController) -> Bool {
