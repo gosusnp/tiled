@@ -47,5 +47,31 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
                 }
             }
         )
+
+        service.addShortcut(
+            steps: [
+                (.character("g"), .maskCommand),
+                (.character("s"), [])
+            ],
+            description: "cmd+g, s: split frame horizontally",
+            action: {
+                Task { @MainActor in
+                    try wm.splitHorizontally()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("g"), .maskCommand),
+                (.character("s"), .maskShift)
+            ],
+            description: "cmd+g, shift+s: split frame vertically",
+            action: {
+                Task { @MainActor in
+                    try wm.splitVertically()
+                }
+            }
+        )
     }
 }
