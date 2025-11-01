@@ -38,7 +38,7 @@ class WindowTracker: @unchecked Sendable {
     }
 
     func startTracking() {
-        self.logger.debug("Starting window tracking")
+        self.logger.info("Starting window tracking")
 
         // Initialize observer on first call (lazy initialization)
         if observer == nil {

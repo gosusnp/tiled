@@ -93,7 +93,7 @@ class WindowEventObserver: @unchecked Sendable {
                     try self.setupObserverForApplication(pid: pid)
                     successCount += 1
                 } catch {
-                    self.logger.warning(
+                    self.logger.debug(
                         "Failed to set up observer for \(app.localizedName ?? "Unknown") (pid: \(pid)): \(error)"
                     )
                 }
@@ -203,7 +203,7 @@ class WindowEventObserver: @unchecked Sendable {
                 )
                 successCount += 1
             } catch {
-                logger.warning(
+                logger.debug(
                     "Failed to subscribe to \(notification) for pid \(pid): \(error)"
                 )
             }
