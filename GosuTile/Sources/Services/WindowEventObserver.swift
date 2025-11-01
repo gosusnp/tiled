@@ -357,16 +357,19 @@ class WindowEventObserver: @unchecked Sendable {
 
     /// Handle a new application launching
     private func onApplicationLaunched(pid: pid_t) {
-        guard observersRunning else {
-            return
-        }
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard self.observersRunning else {
+                return
+            }
 
-        logger.info("Application launched with pid \(pid), setting up observer...")
+            self.logger.info("Application launched with pid \(pid), setting up observer...")
 
-        do {
-            try setupObserverForApplication(pid: pid)
-        } catch {
-            logger.error("Failed to observe new app (pid \(pid)): \(error)")
+            do {
+                try self.setupObserverForApplication(pid: pid)
+            } catch {
+                self.logger.error("Failed to observe new app (pid \(pid)): \(error)")
+            }
         }
     }
 
@@ -374,16 +377,20 @@ class WindowEventObserver: @unchecked Sendable {
     private func onApplicationTerminated(pid: pid_t) {
         logger.info("Application terminated with pid \(pid), removing observer...")
 
-        guard let observer = appObservers[pid] else {
-            logger.debug("No observer found for terminated app (pid \(pid))")
-            return
+        stateQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+
+            guard let observer = self.appObservers[pid] else {
+                self.logger.debug("No observer found for terminated app (pid \(pid))")
+                return
+            }
+
+            self.removeObserverFromRunLoop(observer)
+            self.appObservers.removeValue(forKey: pid)
+            self.observerSubscriptions.removeValue(forKey: pid)
+
+            self.logger.info("Observer removed for terminated app (pid \(pid))")
         }
-
-        removeObserverFromRunLoop(observer)
-        appObservers.removeValue(forKey: pid)
-        observerSubscriptions.removeValue(forKey: pid)
-
-        logger.info("Observer removed for terminated app (pid \(pid))")
     }
 
     /// Set up workspace observer for app launches/terminations

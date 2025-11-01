@@ -70,7 +70,7 @@ class WindowManager {
         do {
             try assignWindow(window)
         } catch {
-            self.logger.warning("Failed to assign \(window.title)")
+            self.logger.warning("Failed to assign \(window.title): \(error)")
         }
     }
 
