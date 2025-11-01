@@ -198,8 +198,6 @@ class WindowPollingService: @unchecked Sendable {
             let key = getWindowKey(window)
             cachedWindowState[key] = window
         }
-
-        self.logger.debug("Polling validation complete: \(currentWindows.count) windows in cache")
     }
 
     /// Get all currently visible windows on the system
@@ -308,11 +306,7 @@ class WindowPollingService: @unchecked Sendable {
         let key = getWindowKey(element)
         if cachedWindowState[key] != nil {
             // It was in cache, so we haven't emitted yet
-            self.logger.debug("Polling detected window closed")
             onWindowClosed?(element)
-        } else {
-            // Window was already removed from cache (likely by observer)
-            self.logger.debug("Polling detected window closed but already in cache, skipping")
         }
     }
 
@@ -331,11 +325,7 @@ class WindowPollingService: @unchecked Sendable {
         // Check if this window is already in the cache
         if cachedWindowState[key] == nil {
             // It's not in cache, so observer hasn't notified yet
-            self.logger.debug("Polling detected window opened")
             onWindowOpened?(element)
-        } else {
-            // Window is already in cache (observer already notified)
-            self.logger.debug("Polling detected window opened but already in cache, skipping")
         }
     }
 }
