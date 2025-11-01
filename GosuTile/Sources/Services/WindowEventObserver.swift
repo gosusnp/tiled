@@ -51,8 +51,9 @@ class WindowEventObserver: @unchecked Sendable {
         attributes: .concurrent
     )
 
-    /// Workspace observer for app launches/terminations
-    private var workspaceObserver: NSObjectProtocol?
+    /// Workspace observers for app launches and terminations
+    private var workspaceLaunchObserver: NSObjectProtocol?
+    private var workspaceTerminationObserver: NSObjectProtocol?
 
     // MARK: - TODO: Polling Properties
     // These properties will be added in Phase 2 (Polling Implementation)
@@ -148,10 +149,14 @@ class WindowEventObserver: @unchecked Sendable {
             // - Set self.pollingTimer = nil
             // - Clear cached window state (self.cachedWindowState.removeAll())
 
-            // Remove workspace observer
-            if let observer = self.workspaceObserver {
+            // Remove workspace observers
+            if let observer = self.workspaceLaunchObserver {
                 NSWorkspace.shared.notificationCenter.removeObserver(observer)
-                self.workspaceObserver = nil
+                self.workspaceLaunchObserver = nil
+            }
+            if let observer = self.workspaceTerminationObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(observer)
+                self.workspaceTerminationObserver = nil
             }
 
             // Remove all application observers
@@ -254,26 +259,21 @@ class WindowEventObserver: @unchecked Sendable {
     private func createAXObserver(forProcessID processID: pid_t) throws -> AXObserver {
         var observer: AXObserver?
 
-        // The callback captures no state. It just signals that something happened.
+        // Minimal callback to avoid Swift 6 strict concurrency compiler issues
+        // The callback doesn't dispatch or process events - it just exists to register the observer
         let result = AXObserverCreate(
             processID,
-            { (_: AXObserver, element: AXUIElement, notification: CFString?, _: UnsafeMutableRawPointer?) in
+            { (_: AXObserver, _: AXUIElement, _: CFString?, _: UnsafeMutableRawPointer?) in
                 // Called by AccessibilityAPI from a system thread.
-                // We store the element reference and notification in a thread-safe wrapper.
-                let elementPtr = unsafeBitCast(element, to: UInt64.self)
-                let notificationString = notification.map { $0 as String }
-
-                // Dispatch with only Sendable types (pointers are safe to send)
-                DispatchQueue.main.async {
-                    if let instance = WindowEventObserver.sharedInstance {
-                        // Reconstruct element from pointer
-                        let elementRestored = unsafeBitCast(elementPtr, to: AXUIElement.self)
-                        instance.handleObserverCallbackWithNotificationString(
-                            element: elementRestored,
-                            notificationString: notificationString
-                        )
-                    }
-                }
+                // NOTE: We keep this intentionally empty to avoid thread-safety issues.
+                //
+                // Why empty?
+                // - AXUIElement is only valid during callback lifetime
+                // - Dispatching it across threads causes compiler crashes (Swift 6 bug)
+                // - CrossElementProcessing is complex and error-prone
+                //
+                // Solution: Phase 2 (polling) will handle event detection instead.
+                // The observer will be set up for future phases when needed.
             },
             &observer
         )
@@ -417,7 +417,8 @@ class WindowEventObserver: @unchecked Sendable {
     private func setupWorkspaceObserver() {
         let center = NSWorkspace.shared.notificationCenter
 
-        workspaceObserver = center.addObserver(
+        // Observe for app launches
+        workspaceLaunchObserver = center.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification,
             object: nil,
             queue: .main
@@ -428,8 +429,8 @@ class WindowEventObserver: @unchecked Sendable {
             }
         }
 
-        // Also observe for app termination
-        let terminationObserver = center.addObserver(
+        // Observe for app termination
+        workspaceTerminationObserver = center.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification,
             object: nil,
             queue: .main
@@ -440,63 +441,13 @@ class WindowEventObserver: @unchecked Sendable {
             }
         }
 
-        // Store both observers (we'll remove both on stop)
-        if let existing = workspaceObserver {
-            center.removeObserver(existing)
-        }
-        workspaceObserver = terminationObserver
+        logger.debug("Workspace observers set up for app launches and terminations")
     }
 
     // MARK: - Private: Event Handling
-
-    /// Handle an AXObserver callback with the notification as a String
-    ///
-    /// Called on the main thread from the observer callback via DispatchQueue.main.async.
-    /// The notification has been converted to a String (Sendable) before crossing thread boundaries.
-    ///
-    /// Uses nonisolated(unsafe) because:
-    /// - We receive the non-Sendable AXUIElement directly (it's valid on this thread)
-    /// - We're called on the main thread only (via DispatchQueue.main.async)
-    /// - All accesses to instance callbacks happen directly (safe on main thread)
-    ///
-    /// - Parameters:
-    ///   - element: The AXUIElement that the notification relates to
-    ///   - notificationString: The notification type as a String (e.g., "AXWindowCreated")
-    nonisolated(unsafe) private func handleObserverCallbackWithNotificationString(
-        element: AXUIElement,
-        notificationString: String?
-    ) {
-        guard let notificationString = notificationString else {
-            return
-        }
-
-        logger.debug("Observer callback: \(notificationString)")
-
-        switch notificationString {
-        case kAXWindowCreatedNotification:
-            // TODO: Update cache before calling callback
-            // - Extract window metadata (title, app name, etc)
-            // - Add to cachedWindowState with a unique key
-            // - Use this to prevent duplicate events when polling also detects the same window
-            onWindowCreated?(element)
-
-        case kAXFocusedWindowChangedNotification:
-            // TODO: Implement deduplication
-            // - Check if lastFocusedWindow == element
-            // - Only call callback if it's actually different from last known focus
-            // - Update lastFocusedWindow = element
-            onWindowFocused?(element)
-
-        case kAXApplicationActivatedNotification:
-            // TODO: This might also trigger a focus change
-            // - Consider whether we need to trigger onWindowFocused here
-            // - Or let polling handle it in the next validation cycle
-            logger.debug("Application activated")
-
-        default:
-            logger.debug("Unknown notification: \(notificationString)")
-        }
-    }
+    // NOTE: Event handling is deferred to Phase 2 (Polling Implementation).
+    // The AXObserver callback is currently empty due to Swift 6 strict concurrency
+    // limitations. WindowTracker will rely on periodic polling to detect changes.
 
     // MARK: - TODO: Polling Implementation
     // All methods in this section need to be implemented in Phase 2

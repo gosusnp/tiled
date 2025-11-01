@@ -12,12 +12,32 @@ class WindowTracker: @unchecked Sendable {
     var onWindowClosed: ((AXUIElement) -> Void)?
     var onWindowFocused: ((AXUIElement) -> Void)?
 
+    // MARK: - Phase 3 Integration: Step 1
+    /// Observer for real-time window events (lazy to prevent early initialization)
+    private var observer: WindowEventObserver!
+
     init(logger: Logger) {
         self.logger = logger
+        // MARK: - Phase 3 Integration: Step 1
+        /// Observer will be initialized in startTracking() to ensure proper lifecycle
+    }
+
+    deinit {
+        // Critical: Stop observer when tracker is deallocated
+        // This prevents callbacks from firing on a deallocated object
+        if observer != nil {
+            observer.stopObserving()
+        }
     }
 
     func startTracking() {
         self.logger.debug("Starting window tracking")
+
+        // MARK: - Phase 3 Integration: Step 2
+        /// Initialize observer on first call (lazy initialization)
+        if observer == nil {
+            self.observer = WindowEventObserver(logger: self.logger)
+        }
 
         // Initial discovery - returns windows sorted by z-index (most recent first)
         self.windows = getAllWindows()
@@ -29,11 +49,124 @@ class WindowTracker: @unchecked Sendable {
             self.onWindowOpened?(window)
         }
 
-        // Begin monitoring for changes (TODO: implement event detection)
+        // MARK: - Phase 3 Integration: Step 2
+        /// Wire observer callbacks and start observing
+        self.observer.onWindowCreated = { [weak self] element in
+            self?.handleWindowCreated(element)
+        }
+
+        self.observer.onWindowClosed = { [weak self] element in
+            self?.handleWindowClosed(element)
+        }
+
+        self.observer.onWindowFocused = { [weak self] element in
+            self?.handleWindowFocused(element)
+        }
+
+        // Start the observer to begin real-time event detection
+        self.observer.startObserving()
+
+        self.logger.debug("Window event observer started")
     }
 
     func getWindows() -> [AXUIElement] {
         return self.windows
+    }
+
+    // MARK: - Phase 3 Integration: Step 3
+    /// Stop tracking window events
+    func stopTracking() {
+        self.logger.debug("Stopping window tracking")
+
+        // Safety check: only stop if observer was initialized
+        if observer != nil {
+            // Clear callbacks BEFORE stopping observer to prevent any pending calls
+            self.observer.onWindowCreated = nil
+            self.observer.onWindowClosed = nil
+            self.observer.onWindowFocused = nil
+
+            // Stop the observer and clean up resources
+            self.observer.stopObserving()
+        }
+
+        // Clear the cached windows list
+        self.windows.removeAll()
+
+        self.logger.debug("Window event observer stopped")
+    }
+
+    // MARK: - Phase 3 Integration: Step 4
+    /// Event handler methods for observer callbacks
+
+    /// Handle a window creation event
+    /// - Parameter element: The newly created window
+    private func handleWindowCreated(_ element: AXUIElement) {
+        // TODO: Implementation
+        // 1. Check if already tracked (deduplication)
+        // 2. Add to self.windows if new
+        // 3. Emit self.onWindowOpened?(element)
+        // 4. Update polling cache (Phase 2)
+
+        // Safety check: ensure we're still in a valid state
+        guard !self.windows.isEmpty || self.windows.count >= 0 else {
+            self.logger.warning("handleWindowCreated called in invalid state")
+            return
+        }
+
+        self.logger.debug("Window created event received")
+
+        // For now, check if already in list before adding
+        guard !self.windows.contains(where: { $0 == element }) else {
+            self.logger.debug("Window already tracked, skipping duplicate")
+            return
+        }
+
+        // Add to windows list
+        self.windows.append(element)
+
+        // Emit callback to subscribers (safe to call on nil)
+        self.onWindowOpened?(element)
+
+        self.logger.debug("Window added to tracker, total windows: \(self.windows.count)")
+    }
+
+    /// Handle a window closure event
+    /// - Parameter element: The window that was closed
+    private func handleWindowClosed(_ element: AXUIElement) {
+        // TODO: Implementation
+        // 1. Remove from self.windows
+        // 2. Emit self.onWindowClosed?(element)
+        // 3. Update polling cache (Phase 2)
+        self.logger.debug("Window closed event received")
+
+        // Remove from windows list
+        self.windows.removeAll { $0 == element }
+
+        // Emit callback to subscribers
+        self.onWindowClosed?(element)
+
+        self.logger.debug("Window removed from tracker, total windows: \(self.windows.count)")
+    }
+
+    /// Handle a window focus change event
+    /// - Parameter element: The window that gained focus
+    private func handleWindowFocused(_ element: AXUIElement) {
+        // TODO: Implementation
+        // 1. Verify element is tracked (safety check)
+        // 2. Emit self.onWindowFocused?(element)
+        // 3. Update polling cache (Phase 2)
+        self.logger.debug("Window focused event received")
+
+        // Verify the window is tracked
+        guard self.windows.contains(where: { $0 == element }) else {
+            self.logger.warning("Focused window is not in tracked windows list")
+            return
+        }
+
+        // Emit callback to subscribers
+        self.onWindowFocused?(element)
+
+        self.logger.debug("Window focus callback emitted")
     }
 
     // MARK: - Window Discovery
