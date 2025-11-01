@@ -8,7 +8,7 @@ import ApplicationServices
 @MainActor
 class WindowManager {
     var config: ConfigController = ConfigController()
-    var activeFrame: FrameController? = nil
+    weak var activeFrame: FrameController? = nil
     var rootFrame: FrameController? = nil
     let logger: Logger
     let tracker: WindowTracker
@@ -74,13 +74,13 @@ class WindowManager {
 
     func splitHorizontally() throws {
         if let frame = self.activeFrame {
-            try frame.split(direction: Direction.Horizontal)
+            self.activeFrame = try frame.split(direction: Direction.Horizontal)
         }
     }
 
     func splitVertically() throws {
         if let frame = self.activeFrame {
-            try frame.split(direction: Direction.Vertical)
+            self.activeFrame = try frame.split(direction: Direction.Vertical)
         }
     }
 

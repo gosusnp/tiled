@@ -39,4 +39,9 @@ class FrameWindow {
         self.window.setFrame(rect, display: true)
         self.titleBarView?.setupTabs(tabs: tabs)
     }
+
+    func clear() {
+        self.window.setIsVisible(false)
+        self.titleBarView?.setupTabs(tabs: [])
+    }
 }

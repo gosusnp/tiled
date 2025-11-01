@@ -36,10 +36,17 @@ class FrameController {
     }
 
     func refreshOverlay() {
-        self.frameWindow.updateOverlay(
-            rect: self.geometry.titleBarRect,
-            tabs: self.windowStack.tabs,
-        )
+        if (self.children.isEmpty) {
+            self.frameWindow.updateOverlay(
+                rect: self.geometry.titleBarRect,
+                tabs: self.windowStack.tabs,
+            )
+        } else {
+            self.frameWindow.clear()
+            for child in self.children {
+                child.refreshOverlay()
+            }
+        }
     }
 
     func addWindow(_ window: WindowController, shouldFocus: Bool = false) throws {
@@ -89,7 +96,7 @@ class FrameController {
         }
     }
 
-    func split(direction: Direction) throws {
+    func split(direction: Direction) throws -> FrameController {
         precondition(self.children.isEmpty)
 
         let (geo1, geo2) = direction == .Horizontal
@@ -103,6 +110,8 @@ class FrameController {
         self.children = [child1, child2]
 
         try child1.takeWindowsFrom(self)
+        self.refreshOverlay()
+        return child1
     }
 
     func toString() -> String {

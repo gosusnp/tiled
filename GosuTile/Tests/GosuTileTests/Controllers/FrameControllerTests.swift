@@ -69,12 +69,13 @@ struct FrameControllerTests {
         let frameController = FrameController(rect: testFrame, config: config)
 
         // Split with empty frame (no windows to transfer)
-        try frameController.split(direction: .Horizontal)
+        let newActiveFrame = try frameController.split(direction: .Horizontal)
 
         #expect(frameController.children.count == 2)
         #expect(frameController.windowStack.count == 0)
         #expect(frameController.children[0].parent === frameController)
         #expect(frameController.children[1].parent === frameController)
+        #expect(newActiveFrame === frameController.children[0])
     }
 
     @Test("activeWindow reflects windowStack state")
