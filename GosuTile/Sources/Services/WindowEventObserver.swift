@@ -55,22 +55,6 @@ class WindowEventObserver: @unchecked Sendable {
     private var workspaceLaunchObserver: NSObjectProtocol?
     private var workspaceTerminationObserver: NSObjectProtocol?
 
-    // MARK: - TODO: Polling Properties
-    // These properties will be added in Phase 2 (Polling Implementation)
-
-    /// TODO: Timer for periodic window state validation
-    /// Should fire every 5-10 seconds to detect missed events
-    /// private var pollingTimer: Timer?
-
-    /// TODO: Cache of currently known windows for state comparison
-    /// Maps AXUIElement to window metadata (title, app, etc)
-    /// Used by polling to detect which windows opened/closed since last poll
-    /// private var cachedWindowState: [String: WindowMetadata] = [:]
-
-    /// TODO: Last known focused window
-    /// Used by polling to detect focus changes
-    /// private var lastFocusedWindow: AXUIElement?
-
     // MARK: - Initialization
 
     init(logger: Logger) {
@@ -118,12 +102,6 @@ class WindowEventObserver: @unchecked Sendable {
             // Listen for application launches and terminations
             self.setupWorkspaceObserver()
 
-            // TODO: Start polling timer
-            // - Create a Timer that fires every 5-10 seconds
-            // - Call self.performPollingValidation() on each fire
-            // - Ensure timer runs on main thread (use Timer, not DispatchSourceTimer)
-            // - Store timer in self.pollingTimer for later cleanup
-
             self.observersRunning = true
 
             self.logger.info(
@@ -143,11 +121,6 @@ class WindowEventObserver: @unchecked Sendable {
             }
 
             self.logger.info("Stopping window event observer...")
-
-            // TODO: Stop polling timer
-            // - Invalidate self.pollingTimer if it exists
-            // - Set self.pollingTimer = nil
-            // - Clear cached window state (self.cachedWindowState.removeAll())
 
             // Remove workspace observers
             if let observer = self.workspaceLaunchObserver {
@@ -445,88 +418,9 @@ class WindowEventObserver: @unchecked Sendable {
     }
 
     // MARK: - Private: Event Handling
-    // NOTE: Event handling is deferred to Phase 2 (Polling Implementation).
-    // The AXObserver callback is currently empty due to Swift 6 strict concurrency
-    // limitations. WindowTracker will rely on periodic polling to detect changes.
-
-    // MARK: - TODO: Polling Implementation
-    // All methods in this section need to be implemented in Phase 2
-
-    /// TODO: Perform periodic validation of window state
-    /// Called by polling timer every 5-10 seconds
-    ///
-    /// This should:
-    /// 1. Call WindowTracker.getAllWindows() to get current state
-    /// 2. Compare with cachedWindowState to find:
-    ///    - Windows that were closed (in cache, not in current)
-    ///    - Windows that were opened (in current, not in cache)
-    ///    - Focus changes (if different from lastFocusedWindow)
-    /// 3. Emit appropriate callbacks (avoiding duplicates from observer)
-    /// 4. Update cache with new state
-    ///
-    /// - Warning: Must handle non-Sendable types safely (use same pattern as observer)
-    private func performPollingValidation() {
-        // TODO: Implementation
-        // 1. Get current windows: let currentWindows = getAllWindows()
-        // 2. Get current focus: let currentFocus = getCurrentFocusedWindow()
-        // 3. Compare state
-        // 4. Emit missed events
-        // 5. Update cache
-    }
-
-    /// TODO: Get all currently visible windows on the system
-    /// This should mirror the logic from WindowTracker.getAllWindows()
-    /// Returns windows sorted by z-index (front-to-back)
-    ///
-    /// - Returns: Array of AXUIElement representing all visible windows
-    private func getAllWindowsForPolling() -> [AXUIElement] {
-        // TODO: Implementation
-        // Mirror WindowTracker.getAllWindows() logic
-        return []
-    }
-
-    /// TODO: Get the currently focused window
-    ///
-    /// - Returns: The AXUIElement of the focused window, or nil if none
-    private func getFocusedWindowForPolling() -> AXUIElement? {
-        // TODO: Implementation
-        // Use Accessibility API to get focused window
-        return nil
-    }
-
-    /// TODO: Create a unique key for a window for deduplication
-    /// Used to identify windows across observer and polling mechanisms
-    ///
-    /// - Parameter element: The AXUIElement to create a key for
-    /// - Returns: A stable unique identifier (e.g., "Safari:0x7f1234abcd")
-    private func getWindowKey(_ element: AXUIElement) -> String {
-        // TODO: Implementation
-        // Extract app name and window ID or PID
-        // Format: "AppName:WindowID" or similar
-        return ""
-    }
-
-    /// TODO: Emit window closed event with deduplication
-    /// Only emit if not already emitted by observer
-    ///
-    /// - Parameter element: The window that was closed
-    private func emitWindowClosedWithDeduplication(_ element: AXUIElement) {
-        // TODO: Implementation
-        // Check if this window is in cachedWindowState
-        // Only call onWindowClosed if it hasn't already been notified
-        // Remove from cache
-    }
-
-    /// TODO: Emit window opened event with deduplication
-    /// Only emit if not already emitted by observer
-    ///
-    /// - Parameter element: The window that was opened
-    private func emitWindowOpenedWithDeduplication(_ element: AXUIElement) {
-        // TODO: Implementation
-        // Check if this window is already in cachedWindowState
-        // Only call onWindowCreated if it hasn't already been notified
-        // Add to cache
-    }
+    // NOTE: Event handling deferred to WindowPollingService (Phase 2).
+    // The AXObserver callback is intentionally empty to avoid Swift 6 concurrency issues.
+    // WindowTracker coordinates both observer and polling service for complete coverage.
 
 }
 
