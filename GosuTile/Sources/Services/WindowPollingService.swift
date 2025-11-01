@@ -282,13 +282,12 @@ class WindowPollingService: @unchecked Sendable {
     /// - Returns: A stable unique identifier for this poll cycle
     private func getWindowKey(_ element: AXUIElement) -> String {
         // Create a stable key based on intrinsic window properties
-        // PID + title is unique and stable across polling cycles
-        let title = windowProvider.getTitleForWindow(element)
+        // PID + element.hashValue is unique and stable across polling cycles
         var pid: pid_t = 0
         AXUIElementGetPid(element, &pid)
 
-        // Stable key: process ID + window title
-        let key = "\(pid):\(title)"
+        // Stable key: process ID + element.hashValue
+        let key = "\(pid):\(element.hashValue)"
         return key
     }
 
