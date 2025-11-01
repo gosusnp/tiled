@@ -38,7 +38,7 @@ class WindowPollingService: @unchecked Sendable {
 
     /// Timer for periodic window state validation
     /// Fires every 5-10 seconds to detect missed events
-    private var pollingTimer: Timer?
+    private var pollingTimer: DispatchSourceTimer?
 
     /// Cache of currently known windows for state comparison
     /// Maps window key (e.g., "Safari:0x7f1234abcd") to AXUIElement
@@ -88,16 +88,14 @@ class WindowPollingService: @unchecked Sendable {
 
             self.logger.info("Starting window polling...")
 
-            // Create Timer that fires every 5-10 seconds
-            // Using 7 seconds as a reasonable middle ground
-            self.pollingTimer = Timer.scheduledTimer(withTimeInterval: 7.0, repeats: true) { [weak self] _ in
+            // Create DispatchSourceTimer (independent of run loop mode)
+            let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+            timer.schedule(wallDeadline: .now() + 7.0, repeating: 7.0)
+            timer.setEventHandler { [weak self] in
                 self?.performPollingValidation()
             }
-
-            // Ensure timer runs on main thread (Timer is main-thread based by default)
-            if let timer = self.pollingTimer {
-                RunLoop.main.add(timer, forMode: .common)
-            }
+            timer.resume()
+            self.pollingTimer = timer
 
             self.pollingRunning = true
 
@@ -117,9 +115,9 @@ class WindowPollingService: @unchecked Sendable {
 
             self.logger.info("Stopping window polling...")
 
-            // Invalidate timer if it exists
+            // Cancel timer if it exists
             if let timer = self.pollingTimer {
-                timer.invalidate()
+                timer.cancel()
                 self.pollingTimer = nil
             }
 
@@ -189,7 +187,6 @@ class WindowPollingService: @unchecked Sendable {
         // Check for focus changes
         if currentFocus != lastFocusedWindow {
             if let focusedWindow = currentFocus {
-                self.logger.debug("Polling detected focus change")
                 onWindowFocused?(focusedWindow)
                 lastFocusedWindow = focusedWindow
             }
@@ -286,13 +283,14 @@ class WindowPollingService: @unchecked Sendable {
     /// - Parameter element: The AXUIElement to create a key for
     /// - Returns: A stable unique identifier for this poll cycle
     private func getWindowKey(_ element: AXUIElement) -> String {
-        // Get window title for identification
+        // Create a stable key based on intrinsic window properties
+        // PID + title is unique and stable across polling cycles
         let title = windowProvider.getTitleForWindow(element)
+        var pid: pid_t = 0
+        AXUIElementGetPid(element, &pid)
 
-        // Use the element's memory address for uniqueness within the current poll cycle
-        // (This is stable during a single polling cycle but may change between cycles)
-        let address = ObjectIdentifier(element as AnyObject).hashValue
-        let key = "\(title)_\(address)"
+        // Stable key: process ID + window title
+        let key = "\(pid):\(title)"
         return key
     }
 

@@ -5,7 +5,7 @@ import os
 
 // MARK: - Logger
 class Logger {
-    let logger = os.Logger()
+    let logger = os.Logger(subsystem: "com.snp.GosuTile", category: "main")
 
     init() {}
 

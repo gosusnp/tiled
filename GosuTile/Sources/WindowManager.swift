@@ -36,9 +36,10 @@ class WindowManager {
     }
 
     func assignWindow(_ window: WindowController) throws {
-        if let frame = self.activeFrame {
-            try frame.addWindow(window)
-        }
+        guard let frame = self.activeFrame else { return }
+        try frame.addWindow(window)
+        frame.refreshOverlay()
+        frame.activeWindow?.raise()
     }
 
     func nextWindow() {
@@ -65,12 +66,10 @@ class WindowManager {
 
     private func onWindowOpened(_ element: AXUIElement) {
         let window = WindowController.fromElement(element)
-        self.logger.debug("Found window: [\(window.size)] \(window.appName): \(window.title)")
-
         do {
             try assignWindow(window)
         } catch {
-            self.logger.warning("Failed to assign \(window.title): \(error)")
+            self.logger.warning("Failed to assign window: \(error)")
         }
     }
 

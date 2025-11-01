@@ -232,21 +232,14 @@ class WindowEventObserver: @unchecked Sendable {
     private func createAXObserver(forProcessID processID: pid_t) throws -> AXObserver {
         var observer: AXObserver?
 
-        // Minimal callback to avoid Swift 6 strict concurrency compiler issues
-        // The callback doesn't dispatch or process events - it just exists to register the observer
+        // Set up observer callback
+        // NOTE: Callback is intentionally empty due to Swift 6 strict concurrency restrictions
+        // on passing AXUIElement across thread boundaries. WindowPollingService handles
+        // all window detection via periodic polling instead.
         let result = AXObserverCreate(
             processID,
             { (_: AXObserver, _: AXUIElement, _: CFString?, _: UnsafeMutableRawPointer?) in
-                // Called by AccessibilityAPI from a system thread.
-                // NOTE: We keep this intentionally empty to avoid thread-safety issues.
-                //
-                // Why empty?
-                // - AXUIElement is only valid during callback lifetime
-                // - Dispatching it across threads causes compiler crashes (Swift 6 bug)
-                // - CrossElementProcessing is complex and error-prone
-                //
-                // Solution: Phase 2 (polling) will handle event detection instead.
-                // The observer will be set up for future phases when needed.
+                // Observer is registered but callback is handled by polling service
             },
             &observer
         )

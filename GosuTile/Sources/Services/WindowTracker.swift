@@ -38,7 +38,7 @@ class WindowTracker: @unchecked Sendable {
     }
 
     func startTracking() {
-        self.logger.info("Starting window tracking")
+        self.logger.debug("Starting window tracking")
 
         // Initialize observer on first call (lazy initialization)
         if observer == nil {
@@ -134,11 +134,8 @@ class WindowTracker: @unchecked Sendable {
     /// Handle a window creation event from observer or polling service
     /// - Parameter element: The newly created window
     private func handleWindowCreated(_ element: AXUIElement) {
-        self.logger.debug("Window created event received")
-
         // Check if already tracked (deduplication for observer + polling)
         guard !self.windows.contains(where: { $0 == element }) else {
-            self.logger.debug("Window already tracked, skipping duplicate")
             return
         }
 
@@ -147,8 +144,6 @@ class WindowTracker: @unchecked Sendable {
 
         // Emit callback to subscribers
         self.onWindowOpened?(element)
-
-        self.logger.debug("Window added to tracker, total windows: \(self.windows.count)")
     }
 
     /// Handle a window closure event from observer or polling service
