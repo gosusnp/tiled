@@ -13,6 +13,7 @@ class FrameController {
     let windowStack: WindowStackController
 
     var children: [FrameController] = []
+    weak var parent: FrameController? = nil
 
     var activeWindow: WindowController? {
         self.windowStack.activeWindow
@@ -96,7 +97,9 @@ class FrameController {
             : self.geometry.splitVertically()
 
         let child1 = FrameController(geometry: geo1, config: self.config)
+        child1.parent = self
         let child2 = FrameController(geometry: geo2, config: self.config)
+        child2.parent = self
         self.children = [child1, child2]
 
         try child1.takeWindowsFrom(self)

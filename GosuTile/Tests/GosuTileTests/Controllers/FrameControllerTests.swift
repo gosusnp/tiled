@@ -73,6 +73,8 @@ struct FrameControllerTests {
 
         #expect(frameController.children.count == 2)
         #expect(frameController.windowStack.count == 0)
+        #expect(frameController.children[0].parent === frameController)
+        #expect(frameController.children[1].parent === frameController)
     }
 
     @Test("activeWindow reflects windowStack state")
