@@ -16,8 +16,14 @@ import ApplicationServices
 /// - Observer (real-time): ~10ms latency, may miss events
 /// - Polling (fallback): 5-10s latency, catches everything
 /// - Result: Responsive + Robust
+///
+/// Dependencies:
+/// - WorkspaceProvider: For accessing running applications
+/// - WindowProvider: For querying window information via Accessibility API
 class WindowPollingService: @unchecked Sendable {
     let logger: Logger
+    let workspaceProvider: WorkspaceProvider
+    let windowProvider: WindowProvider
 
     /// Called when polling detects a new window
     var onWindowOpened: ((AXUIElement) -> Void)?
@@ -54,8 +60,14 @@ class WindowPollingService: @unchecked Sendable {
 
     // MARK: - Initialization
 
-    init(logger: Logger) {
+    init(
+        logger: Logger,
+        workspaceProvider: WorkspaceProvider = RealWorkspaceProvider(),
+        windowProvider: WindowProvider = RealWindowProvider()
+    ) {
         self.logger = logger
+        self.workspaceProvider = workspaceProvider
+        self.windowProvider = windowProvider
     }
 
     deinit {
@@ -204,13 +216,8 @@ class WindowPollingService: @unchecked Sendable {
         for app in getApplicationsSortedByZIndex() {
             guard app.activationPolicy == .regular && !app.isHidden else { continue }
 
-            let appElement = AXUIElementCreateApplication(app.processIdentifier)
-            var windowsRef: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
-
-            if result == .success, let windowList = windowsRef as? [AXUIElement] {
-                windows += windowList
-            }
+            let appWindows = windowProvider.getWindowsForApplication(app)
+            windows += appWindows
         }
 
         return windows
@@ -220,14 +227,11 @@ class WindowPollingService: @unchecked Sendable {
     ///
     /// - Returns: Array of NSRunningApplication sorted by their frontmost window's z-index
     private func getApplicationsSortedByZIndex() -> [NSRunningApplication] {
-        let apps = NSWorkspace.shared.runningApplications
+        let apps = workspaceProvider.runningApplications
             .filter { $0.activationPolicy == .regular }
 
         // Get window list in front-to-back order
-        guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
+        guard let windowList = windowProvider.getWindowZOrder() else {
             return apps
         }
 
@@ -264,25 +268,11 @@ class WindowPollingService: @unchecked Sendable {
     /// - Returns: The AXUIElement of the focused window, or nil if none
     private func getFocusedWindowForPolling() -> AXUIElement? {
         // Get the frontmost (focused) application
-        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+        guard let frontmostApp = workspaceProvider.frontmostApplication else {
             return nil
         }
 
-        let appElement = AXUIElementCreateApplication(Int32(frontmostApp.processIdentifier))
-
-        // Get the focused window from the app
-        var focusedRef: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(
-            appElement,
-            kAXFocusedWindowAttribute as CFString,
-            &focusedRef
-        )
-
-        if result == .success, focusedRef != nil {
-            return focusedRef as! AXUIElement
-        }
-
-        return nil
+        return windowProvider.getFocusedWindowForApplication(frontmostApp)
     }
 
     /// Create a unique key for a window for deduplication
@@ -296,10 +286,8 @@ class WindowPollingService: @unchecked Sendable {
     /// - Parameter element: The AXUIElement to create a key for
     /// - Returns: A stable unique identifier for this poll cycle
     private func getWindowKey(_ element: AXUIElement) -> String {
-        // Try to get window title for identification
-        var titleRef: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
-        let title = titleRef as? String ?? "Unknown"
+        // Get window title for identification
+        let title = windowProvider.getTitleForWindow(element)
 
         // Use the element's memory address for uniqueness within the current poll cycle
         // (This is stable during a single polling cycle but may change between cycles)
