@@ -303,9 +303,9 @@ class WindowEventObserver: @unchecked Sendable {
     // MARK: - Private: Observer Lifecycle
 
     /// Add observer to the main run loop
-    /// Uses nonisolated(unsafe) because AXObserver is a CoreFoundation opaque type
+    /// Uses nonisolated because AXObserver is a CoreFoundation opaque type
     /// - Parameter observer: The AXObserver to add to the run loop
-    nonisolated(unsafe) private func addObserverToRunLoop(_ observer: AXObserver) {
+    nonisolated private func addObserverToRunLoop(_ observer: AXObserver) {
         // Use bitcast to convert observer to Sendable pointer for dispatch
         let observerPtr = unsafeBitCast(observer, to: UInt64.self)
         DispatchQueue.main.sync {
@@ -319,9 +319,9 @@ class WindowEventObserver: @unchecked Sendable {
     }
 
     /// Remove observer from the main run loop
-    /// Uses nonisolated(unsafe) because AXObserver is a CoreFoundation opaque type
+    /// Uses nonisolated because AXObserver is a CoreFoundation opaque type
     /// - Parameter observer: The AXObserver to remove from the run loop
-    nonisolated(unsafe) private func removeObserverFromRunLoop(_ observer: AXObserver) {
+    nonisolated private func removeObserverFromRunLoop(_ observer: AXObserver) {
         // Use bitcast to convert observer to Sendable pointer for dispatch
         let observerPtr = unsafeBitCast(observer, to: UInt64.self)
         DispatchQueue.main.sync {
