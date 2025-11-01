@@ -6,11 +6,11 @@ import Cocoa
 // MARK: - Tabs
 class FrameTitleBarTabView: NSView {
     private let title: String
-    private let isActive: Bool
+    private let style: Style
 
-    init(frame: NSRect, title: String, isActive: Bool) {
+    init(frame: NSRect, title: String, style: Style) {
         self.title = title
-        self.isActive = isActive
+        self.style = style
         super.init(frame: frame)
 
         self.wantsLayer = true
@@ -23,19 +23,15 @@ class FrameTitleBarTabView: NSView {
 
     private func setupAppearance() {
         // Tab background colors
-        if self.isActive {
-            self.layer?.backgroundColor = NSColor.white.cgColor
-        } else {
-            self.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        }
+        self.layer?.backgroundColor = style.backgroundColor.cgColor
 
         // Rounded top corners
-        self.layer?.cornerRadius = 2
-        self.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        self.layer?.cornerRadius = style.cornerRadius
+        self.layer?.maskedCorners = style.cornerMask
 
         // Border
-        self.layer?.borderWidth = 1
-        self.layer?.borderColor = NSColor.separatorColor.cgColor
+        self.layer?.borderWidth = style.borderWidth
+        self.layer?.borderColor = style.borderColor.cgColor
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -43,8 +39,8 @@ class FrameTitleBarTabView: NSView {
 
         // Draw title text
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 13),
-            .foregroundColor: isActive ? NSColor.labelColor : NSColor.secondaryLabelColor
+            .font: self.style.font,
+            .foregroundColor: self.style.foregroundColor,
         ]
 
         let attributedTitle = NSAttributedString(string: self.title, attributes: attributes)
@@ -83,7 +79,7 @@ class FrameTitleBarView: NSView {
             let tab = FrameTitleBarTabView(
                 frame: tabRect,
                 title: tab.title,
-                isActive: tab.isActive,
+                style: tab.style,
             )
 
             addSubview(tab)

@@ -15,12 +15,16 @@ class MockWindowController: WindowController {
     }
 }
 
+class MockStyleProvider: StyleProvider {}
+
 @Suite("WindowStackController Tests")
 @MainActor
 struct WindowStackControllerTests {
+    let mockStyleProvider = MockStyleProvider()
+
     @Test("Initializes with empty stack")
     func testInitialization() {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
 
         #expect(stack.count == 0)
         #expect(stack.all.isEmpty)
@@ -30,7 +34,7 @@ struct WindowStackControllerTests {
 
     @Test("Adds a window to the stack")
     func testAddWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window = MockWindowController(title: "Window 1")
 
         try stack.add(window)
@@ -42,7 +46,7 @@ struct WindowStackControllerTests {
 
     @Test("Rejects duplicate windows")
     func testAddDuplicateWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window = MockWindowController(title: "Window 1")
 
         try stack.add(window)
@@ -60,7 +64,7 @@ struct WindowStackControllerTests {
 
     @Test("Cycles to next window")
     func testNextWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
@@ -88,7 +92,7 @@ struct WindowStackControllerTests {
 
     @Test("Cycles to previous window")
     func testPreviousWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
@@ -114,7 +118,7 @@ struct WindowStackControllerTests {
 
     @Test("Removes a window and adjusts activeIndex")
     func testRemoveWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
@@ -136,7 +140,7 @@ struct WindowStackControllerTests {
 
     @Test("Removes middle window and adjusts activeIndex")
     func testRemoveMiddleWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
@@ -159,7 +163,7 @@ struct WindowStackControllerTests {
 
     @Test("Handles removing last window with activeIndex adjustment")
     func testRemoveLastWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
@@ -179,7 +183,7 @@ struct WindowStackControllerTests {
 
     @Test("Returns false when removing non-existent window")
     func testRemoveNonExistentWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
@@ -193,7 +197,7 @@ struct WindowStackControllerTests {
 
     @Test("nextWindow does nothing on empty stack")
     func testNextWindowOnEmpty() {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
 
         stack.nextWindow()
         #expect(stack.activeIndex == 0)
@@ -202,7 +206,7 @@ struct WindowStackControllerTests {
 
     @Test("previousWindow does nothing on empty stack")
     func testPreviousWindowOnEmpty() {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
 
         stack.previousWindow()
         #expect(stack.activeIndex == 0)
@@ -211,7 +215,7 @@ struct WindowStackControllerTests {
 
     @Test("Returns correct activeWindow when stack has one window")
     func testActiveWindowWithSingleWindow() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window = MockWindowController(title: "Window 1")
 
         try stack.add(window)
@@ -222,8 +226,8 @@ struct WindowStackControllerTests {
 
     @Test("Takes all windows from one stack to another")
     func testTakeAll() throws {
-        let sourceStack = WindowStackController()
-        let targetStack = WindowStackController()
+        let sourceStack = WindowStackController(styleProvider: mockStyleProvider)
+        let targetStack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
@@ -245,8 +249,8 @@ struct WindowStackControllerTests {
 
     @Test("Clears source stack after takeAll")
     func testTakeAllClearsSource() throws {
-        let sourceStack = WindowStackController()
-        let targetStack = WindowStackController()
+        let sourceStack = WindowStackController(styleProvider: mockStyleProvider)
+        let targetStack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
@@ -266,8 +270,8 @@ struct WindowStackControllerTests {
 
     @Test("TakeAll with target stack that already has windows")
     func testTakeAllToNonEmptyTarget() throws {
-        let sourceStack = WindowStackController()
-        let targetStack = WindowStackController()
+        let sourceStack = WindowStackController(styleProvider: mockStyleProvider)
+        let targetStack = WindowStackController(styleProvider: mockStyleProvider)
         let existing = MockWindowController(title: "Existing")
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
@@ -293,7 +297,7 @@ struct WindowStackControllerTests {
 
     @Test("Adding window with shouldFocus=true makes it active")
     func testAddWindowWithFocus() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
@@ -309,7 +313,7 @@ struct WindowStackControllerTests {
 
     @Test("Adding window with shouldFocus=false keeps previous active")
     func testAddWindowWithoutFocus() throws {
-        let stack = WindowStackController()
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 

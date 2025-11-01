@@ -5,8 +5,13 @@ import Cocoa
 
 @MainActor
 class WindowStackController {
+    private let styleProvider: StyleProvider
     private var windows: [WindowController] = []
     private(set) var activeIndex: Int = 0
+
+    init(styleProvider: StyleProvider) {
+        self.styleProvider = styleProvider
+    }
 
     // Safe getters
     var activeWindow: WindowController? {
@@ -24,7 +29,12 @@ class WindowStackController {
 
     var tabs: [WindowTab] {
         self.all.enumerated().map { (index, window) in
-            WindowTab(title: window.title, isActive: index == self.activeIndex)
+            let isActive = index == self.activeIndex
+            return WindowTab(
+                title: window.title,
+                isActive: isActive,
+                style: self.styleProvider.getStyle(isActive: isActive),
+            )
         }
     }
 

@@ -7,6 +7,7 @@ import ApplicationServices
 @MainActor
 class FrameController {
     let config: ConfigController
+    let styleProvider: StyleProvider
     private let geometry: FrameGeometry
     let frameWindow: FrameWindow
     let windowStack: WindowStackController
@@ -19,16 +20,18 @@ class FrameController {
 
     init(rect: CGRect, config: ConfigController) {
         self.config = config
+        self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
         self.frameWindow = FrameWindow()
-        self.windowStack = WindowStackController()
+        self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
     private init(geometry: FrameGeometry, config: ConfigController) {
         self.config = config
+        self.styleProvider = StyleProvider()
         self.geometry = geometry
         self.frameWindow = FrameWindow()
-        self.windowStack = WindowStackController()
+        self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
     func refreshOverlay() {
