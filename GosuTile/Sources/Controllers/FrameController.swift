@@ -42,12 +42,21 @@ class FrameController {
     }
 
     func addWindow(_ window: WindowController, shouldFocus: Bool = false) throws {
+        window.frame = self  // Set the frame reference
         try self.windowStack.add(window, shouldFocus: shouldFocus)
 
         // resize window to frame size
         let targetRect = self.geometry.contentRect
         try window.resize(size: targetRect.size)
         try window.move(to: targetRect.origin)
+    }
+
+    func removeWindow(_ window: WindowController) -> Bool {
+        let removed = self.windowStack.remove(window)
+        if removed {
+            window.frame = nil  // Clear the frame reference
+        }
+        return removed
     }
 
     func nextWindow() {
@@ -62,9 +71,14 @@ class FrameController {
         self.refreshOverlay()
     }
 
-    private func takeWindowsFrom(_ other: FrameController) throws {
+    func takeWindowsFrom(_ other: FrameController) throws {
         // Transfer windows to this frame's stack
         try self.windowStack.takeAll(from: other.windowStack)
+
+        // Update frame references for transferred windows
+        for w in self.windowStack.all {
+            w.frame = self
+        }
 
         // Reposition all windows to fit this frame
         let targetRect = self.geometry.contentRect

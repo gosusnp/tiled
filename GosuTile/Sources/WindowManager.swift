@@ -13,6 +13,9 @@ class WindowManager {
     let logger: Logger
     let tracker: WindowTracker
 
+    // Map of AXUIElement to WindowController for quick lookup
+    var windowControllerMap: [AXUIElement: WindowController] = [:]
+
     init(logger: Logger) {
         self.logger = logger
         self.tracker = WindowTracker(logger: logger)
@@ -29,10 +32,12 @@ class WindowManager {
         // Manually add existing windows without focus
         for window in self.tracker.getWindows() {
             let windowController = WindowController.fromElement(window)
+            windowControllerMap[window] = windowController
             do {
                 try assignWindow(windowController, shouldFocus: false)
             } catch {
                 self.logger.warning("Failed to assign initial window: \(error)")
+                windowControllerMap.removeValue(forKey: window)
             }
         }
 
@@ -83,17 +88,39 @@ class WindowManager {
 
     private func onWindowOpened(_ element: AXUIElement) {
         let window = WindowController.fromElement(element)
+        windowControllerMap[element] = window  // Register in map
         do {
             // Runtime windows (new windows created after initialization)
             try assignWindow(window, shouldFocus: true)
         } catch {
             self.logger.warning("Failed to assign window: \(error)")
+            windowControllerMap.removeValue(forKey: element)
         }
     }
 
-    private func onWindowClosed(_ element: AXUIElement) {
-        self.logger.debug("Window closed")
-        // TODO: Remove window from frame
+    func onWindowClosed(_ element: AXUIElement) {
+        guard let windowController = windowControllerMap[element] else {
+            self.logger.warning("Closed window not found")
+            return
+        }
+
+        guard let frame = windowController.frame else {
+            self.logger.debug("Window has no frame (floating window)")
+            windowControllerMap.removeValue(forKey: element)
+            return
+        }
+
+        let wasActive = frame.activeWindow === windowController
+
+        frame.removeWindow(windowController)
+        windowControllerMap.removeValue(forKey: element)
+        frame.refreshOverlay()
+
+        if wasActive, let newActive = frame.activeWindow {
+            newActive.raise()
+        }
+
+        self.logger.debug("Window removed, total windows: \(self.tracker.getWindows().count)")
     }
 
     // MARK: - Layout

@@ -12,6 +12,7 @@ enum WindowError: Error {
 
 class WindowController {
     let window: WindowModel
+    weak var frame: FrameController?
 
     var isFocused: Bool {
         var value: AnyObject?
