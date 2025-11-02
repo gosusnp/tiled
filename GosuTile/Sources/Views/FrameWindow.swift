@@ -42,7 +42,7 @@ class FrameWindow {
 
     func clear() {
         self.titleBarView?.setupTabs(tabs: [])
-        self.titleBarView?.setActive(false)
+        self.titleBarView?.setActive(false)  // Show dimmed border for parent
     }
 
     func setActive(_ isActive: Bool) {

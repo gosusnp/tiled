@@ -11,10 +11,12 @@ class StyleProvider {
         activeStyle = Style(
             backgroundColor: NSColor.lightGray,
             foregroundColor: NSColor.labelColor,
+            frameBorderColor: NSColor.systemBlue,
         )
         defaultStyle = Style(
             backgroundColor: NSColor.darkGray,
             foregroundColor: NSColor.secondaryLabelColor,
+            frameBorderColor: NSColor.gray.withAlphaComponent(0.4),
         )
     }
     func getStyle(isActive: Bool) -> Style { isActive ? self.activeStyle : self.defaultStyle }

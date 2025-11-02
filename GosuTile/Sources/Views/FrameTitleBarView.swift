@@ -70,7 +70,6 @@ class FrameTitleBarView: NSView {
     private var isActive: Bool = false
 
     private let borderThickness: CGFloat = 3.0
-    private let borderColor = NSColor.systemBlue
 
     init(geometry: FrameGeometry, styleProvider: StyleProvider) {
         self.geometry = geometry
@@ -88,14 +87,16 @@ class FrameTitleBarView: NSView {
     private func setupBorder() {
         if let layer = self.layer {
             layer.borderWidth = borderThickness
-            layer.borderColor = borderColor.cgColor
+            let inactiveStyle = styleProvider.getStyle(isActive: false)
+            layer.borderColor = inactiveStyle.frameBorderColor.cgColor
         }
     }
 
     func setActive(_ isActive: Bool) {
         self.isActive = isActive
         if let layer = self.layer {
-            layer.borderWidth = isActive ? borderThickness : 0
+            let style = styleProvider.getStyle(isActive: isActive)
+            layer.borderColor = style.frameBorderColor.cgColor
         }
     }
 

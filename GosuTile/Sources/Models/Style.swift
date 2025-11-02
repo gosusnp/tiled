@@ -15,9 +15,12 @@ class Style {
 
     let font: NSFont
 
+    let frameBorderColor: NSColor
+
     init(
         backgroundColor: NSColor,
         foregroundColor: NSColor,
+        frameBorderColor: NSColor? = nil,
     ) {
         self.backgroundColor = backgroundColor
         self.foregroundColor = foregroundColor
@@ -29,5 +32,7 @@ class Style {
         self.cornerMask = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
 
         self.font = NSFont.systemFont(ofSize: 13)
+
+        self.frameBorderColor = frameBorderColor ?? NSColor.gray.withAlphaComponent(0.4)
     }
 }
