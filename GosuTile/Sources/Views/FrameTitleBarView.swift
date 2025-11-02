@@ -67,15 +67,36 @@ class FrameTitleBarTabView: NSView {
 class FrameTitleBarView: NSView {
     private let geometry: FrameGeometry
     private let styleProvider: StyleProvider
+    private var isActive: Bool = false
+
+    private let borderThickness: CGFloat = 3.0
+    private let borderColor = NSColor.systemBlue
 
     init(geometry: FrameGeometry, styleProvider: StyleProvider) {
         self.geometry = geometry
         self.styleProvider = styleProvider
         super.init(frame: .zero)
+        self.wantsLayer = true
+        self.layer?.backgroundColor = NSColor.clear.cgColor
+        setupBorder()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupBorder() {
+        if let layer = self.layer {
+            layer.borderWidth = borderThickness
+            layer.borderColor = borderColor.cgColor
+        }
+    }
+
+    func setActive(_ isActive: Bool) {
+        self.isActive = isActive
+        if let layer = self.layer {
+            layer.borderWidth = isActive ? borderThickness : 0
+        }
     }
 
     func setupTabs(tabs: [WindowTab]) {
@@ -96,7 +117,7 @@ class FrameTitleBarView: NSView {
         for (index, tab) in tabsToDisplay.enumerated() {
             let tabRect = NSRect(
                 x: CGFloat(index) * tabWidth,
-                y: 0,
+                y: self.bounds.height - geometry.titleBarHeight,
                 width: tabWidth,
                 height: tabHeight
             )
@@ -111,4 +132,5 @@ class FrameTitleBarView: NSView {
             addSubview(tabView)
         }
     }
+
 }

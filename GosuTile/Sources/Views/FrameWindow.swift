@@ -12,7 +12,7 @@ class FrameWindow {
     }
 
     init(geo: FrameGeometry, styleProvider: StyleProvider) {
-        let frame = FrameWindow.invertY(rect: geo.titleBarRect)
+        let frame = FrameWindow.invertY(rect: geo.frameRect)
         let panel = NSPanel(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -42,6 +42,11 @@ class FrameWindow {
 
     func clear() {
         self.titleBarView?.setupTabs(tabs: [])
+        self.titleBarView?.setActive(false)
+    }
+
+    func setActive(_ isActive: Bool) {
+        self.titleBarView?.setActive(isActive)
     }
 
     private static func invertY(rect: CGRect) -> NSRect {

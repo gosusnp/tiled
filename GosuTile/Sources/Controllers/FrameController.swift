@@ -14,9 +14,15 @@ class FrameController {
 
     var children: [FrameController] = []
     weak var parent: FrameController? = nil
+    private var isActive: Bool = false
 
     var activeWindow: WindowController? {
         self.windowStack.activeWindow
+    }
+
+    func setActive(_ isActive: Bool) {
+        self.isActive = isActive
+        self.frameWindow.setActive(isActive)
     }
 
     init(rect: CGRect, config: ConfigController) {
@@ -107,6 +113,11 @@ class FrameController {
         self.children = [child1, child2]
 
         try child1.takeWindowsFrom(self)
+
+        // Manage active states
+        child1.setActive(true)
+        child2.setActive(false)
+
         self.refreshOverlay()
         return child1
     }
@@ -117,6 +128,8 @@ class FrameController {
 
     static func fromScreen(_ screen: NSScreen, config: ConfigController) -> FrameController {
         let geometry = FrameGeometry.fromScreen(screen, titleBarHeight: config.titleBarHeight)
-        return FrameController(rect: geometry.frameRect, config: config)
+        let frame = FrameController(rect: geometry.frameRect, config: config)
+        frame.setActive(true)
+        return frame
     }
 }
