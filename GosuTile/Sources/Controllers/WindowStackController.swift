@@ -33,7 +33,6 @@ class WindowStackController {
             return WindowTab(
                 title: window.title,
                 isActive: isActive,
-                style: self.styleProvider.getStyle(isActive: isActive),
             )
         }
     }

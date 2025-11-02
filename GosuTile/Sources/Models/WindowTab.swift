@@ -6,11 +6,9 @@ import Cocoa
 class WindowTab {
     let title: String
     let isActive: Bool
-    let style: Style
 
-    init(title: String, isActive: Bool, style: Style) {
+    init(title: String, isActive: Bool) {
         self.title = title
         self.isActive = isActive
-        self.style = style
     }
 }

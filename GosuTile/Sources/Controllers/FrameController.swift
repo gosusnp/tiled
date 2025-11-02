@@ -23,7 +23,7 @@ class FrameController {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
-        self.frameWindow = FrameWindow(rect: self.geometry.titleBarRect)
+        self.frameWindow = FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
@@ -31,7 +31,7 @@ class FrameController {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = geometry
-        self.frameWindow = FrameWindow(rect: self.geometry.titleBarRect)
+        self.frameWindow = FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 

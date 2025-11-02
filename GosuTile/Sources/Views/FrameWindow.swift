@@ -11,8 +11,8 @@ class FrameWindow {
         window.contentView as? FrameTitleBarView
     }
 
-    init(rect: CGRect) {
-        let frame = FrameWindow.invertY(rect: rect)
+    init(geo: FrameGeometry, styleProvider: StyleProvider) {
+        let frame = FrameWindow.invertY(rect: geo.titleBarRect)
         let panel = NSPanel(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -30,7 +30,7 @@ class FrameWindow {
         panel.becomesKeyOnlyIfNeeded = false
         panel.hidesOnDeactivate = false
 
-        panel.contentView = FrameTitleBarView(frame: .zero)
+        panel.contentView = FrameTitleBarView(geometry: geo, styleProvider: styleProvider)
         panel.orderFront(nil)
 
         self.window = panel

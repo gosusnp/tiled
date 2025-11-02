@@ -6,11 +6,17 @@ import Cocoa
 // MARK: - Tabs
 class FrameTitleBarTabView: NSView {
     private let title: String
-    private let style: Style
+    private let isActive: Bool
+    private let styleProvider: StyleProvider
 
-    init(frame: NSRect, title: String, style: Style) {
+    private var style: Style {
+        styleProvider.getStyle(isActive: isActive)
+    }
+
+    init(frame: NSRect, title: String, isActive: Bool, styleProvider: StyleProvider) {
         self.title = title
-        self.style = style
+        self.isActive = isActive
+        self.styleProvider = styleProvider
         super.init(frame: frame)
 
         self.wantsLayer = true
@@ -59,44 +65,50 @@ class FrameTitleBarTabView: NSView {
 }
 
 class FrameTitleBarView: NSView {
+    private let geometry: FrameGeometry
+    private let styleProvider: StyleProvider
+
+    init(geometry: FrameGeometry, styleProvider: StyleProvider) {
+        self.geometry = geometry
+        self.styleProvider = styleProvider
+        super.init(frame: .zero)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     func setupTabs(tabs: [WindowTab]) {
         // Clear existing subviews
         self.subviews.forEach { $0.removeFromSuperview() }
 
-        guard !tabs.isEmpty else {
-            let tabRect = NSRect(
-                x: self.bounds.minX,
-                y: self.bounds.minY,
-                width: self.bounds.width,
-                height: self.bounds.height,
-            )
-            let tab = FrameTitleBarTabView(
-                frame: tabRect,
-                title: "",
-                style: StyleProvider().getStyle(isActive: false),
-            )
-            addSubview(tab)
-            return
-        }
+        let tabsToDisplay = !tabs.isEmpty ? tabs : [WindowTab(title: "", isActive: false)]
+        let tabCount = CGFloat(tabsToDisplay.count)
 
-        let tabWidth = self.bounds.width / CGFloat(tabs.count)
-        let tabHeight = self.bounds.height
+        guard tabCount > 0 else { return }
 
-        for (index, tab) in tabs.enumerated() {
+        let totalWidth = self.geometry.titleBarRect.width
+        guard totalWidth > 0 else { return }
+
+        let tabWidth = totalWidth / tabCount
+        let tabHeight = self.geometry.titleBarHeight
+
+        for (index, tab) in tabsToDisplay.enumerated() {
             let tabRect = NSRect(
-                x: self.bounds.minX + CGFloat(index) * tabWidth,
-                y: self.bounds.minY,
+                x: CGFloat(index) * tabWidth,
+                y: 0,
                 width: tabWidth,
-                height: tabHeight,
+                height: tabHeight
             )
 
-            let tab = FrameTitleBarTabView(
+            let tabView = FrameTitleBarTabView(
                 frame: tabRect,
                 title: tab.title,
-                style: tab.style,
+                isActive: tab.isActive,
+                styleProvider: styleProvider
             )
 
-            addSubview(tab)
+            addSubview(tabView)
         }
     }
 }
