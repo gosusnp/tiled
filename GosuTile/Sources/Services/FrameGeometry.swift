@@ -4,55 +4,55 @@
 import Cocoa
 
 class FrameGeometry {
-    let rect: CGRect
+    let frameRect: CGRect
     let titleBarHeight: CGFloat
 
     init(rect: CGRect, titleBarHeight: CGFloat) {
-        self.rect = rect
+        self.frameRect = rect
         self.titleBarHeight = titleBarHeight
     }
 
     // Derived rects
     var contentRect: CGRect {
         CGRect(
-            x: rect.origin.x,
-            y: rect.origin.y + titleBarHeight,
-            width: rect.size.width,
-            height: rect.size.height - titleBarHeight
+            x: frameRect.origin.x,
+            y: frameRect.origin.y + titleBarHeight,
+            width: frameRect.size.width,
+            height: frameRect.size.height - titleBarHeight,
         )
     }
 
     var titleBarRect: CGRect {
         CGRect(
-            x: rect.origin.x,
-            y: rect.origin.y + rect.size.height - titleBarHeight,
-            width: rect.size.width,
-            height: titleBarHeight
+            x: frameRect.origin.x,
+            y: frameRect.origin.y,
+            width: frameRect.size.width,
+            height: titleBarHeight,
         )
     }
 
     // Splitting returns two new geometries
     func splitHorizontally() -> (FrameGeometry, FrameGeometry) {
-        let yshift = rect.size.height / 2
-        let top = FrameGeometry(
-            rect: CGRect(x: rect.origin.x, y: rect.origin.y, width: rect.width, height: yshift),
+        let yshift = frameRect.size.height / 2
+        let bottom = FrameGeometry(
+            rect: CGRect(x: frameRect.origin.x, y: frameRect.origin.y + yshift, width: frameRect.width, height: yshift),
             titleBarHeight: titleBarHeight
         )
-        let bottom = FrameGeometry(
-            rect: CGRect(x: rect.origin.x, y: rect.origin.y + yshift, width: rect.width, height: yshift),
+        let top = FrameGeometry(
+            rect: CGRect(x: frameRect.origin.x, y: frameRect.origin.y, width: frameRect.width, height: yshift),
             titleBarHeight: titleBarHeight
         )
         return (top, bottom)
     }
 
     func splitVertically() -> (FrameGeometry, FrameGeometry) {
-        let xshift = rect.size.width / 2
+        let xshift = frameRect.size.width / 2
         let left = FrameGeometry(
-            rect: CGRect(x: rect.origin.x, y: rect.origin.y, width: xshift, height: rect.height),
+            rect: CGRect(x: frameRect.origin.x, y: frameRect.origin.y, width: xshift, height: frameRect.height),
             titleBarHeight: titleBarHeight
         )
         let right = FrameGeometry(
-            rect: CGRect(x: rect.origin.x + xshift, y: rect.origin.y, width: xshift, height: rect.height),
+            rect: CGRect(x: frameRect.origin.x + xshift, y: frameRect.origin.y, width: xshift, height: frameRect.height),
             titleBarHeight: titleBarHeight
         )
         return (left, right)
@@ -65,13 +65,13 @@ class FrameGeometry {
 
     static func fromScreen(_ screen: NSScreen, titleBarHeight: CGFloat) -> FrameGeometry {
         let menubarHeight = screen.frame.height - screen.visibleFrame.height - (screen.visibleFrame.minY - screen.frame.minY)
-        let bounds = screen.visibleFrame
+        let frame = screen.visibleFrame
         return FrameGeometry(
             rect: CGRect(
-                x: bounds.minX,
-                y: bounds.minY + menubarHeight,
-                width: bounds.width,
-                height: bounds.height
+                x: frame.minX,
+                y: frame.minY + menubarHeight,
+                width: frame.width,
+                height: frame.height
             ),
             titleBarHeight: titleBarHeight
         )

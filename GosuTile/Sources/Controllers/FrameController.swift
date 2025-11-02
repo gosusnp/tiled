@@ -23,7 +23,7 @@ class FrameController {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
-        self.frameWindow = FrameWindow()
+        self.frameWindow = FrameWindow(rect: self.geometry.titleBarRect)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
@@ -31,16 +31,13 @@ class FrameController {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = geometry
-        self.frameWindow = FrameWindow()
+        self.frameWindow = FrameWindow(rect: self.geometry.titleBarRect)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
     func refreshOverlay() {
         if (self.children.isEmpty) {
-            self.frameWindow.updateOverlay(
-                rect: self.geometry.titleBarRect,
-                tabs: self.windowStack.tabs,
-            )
+            self.frameWindow.updateOverlay(tabs: self.windowStack.tabs)
         } else {
             self.frameWindow.clear()
             for child in self.children {
@@ -115,11 +112,11 @@ class FrameController {
     }
 
     func toString() -> String {
-        return "Frame(rect=\(self.geometry.rect))"
+        return "Frame(rect=\(self.geometry.frameRect))"
     }
 
     static func fromScreen(_ screen: NSScreen, config: ConfigController) -> FrameController {
         let geometry = FrameGeometry.fromScreen(screen, titleBarHeight: config.titleBarHeight)
-        return FrameController(rect: geometry.rect, config: config)
+        return FrameController(rect: geometry.frameRect, config: config)
     }
 }

@@ -18,7 +18,7 @@ struct FrameGeometryTests {
     func testInitialization() {
         let geometry = FrameGeometry(rect: testRect, titleBarHeight: titleBarHeight)
 
-        #expect(geometry.rect == testRect)
+        #expect(geometry.frameRect == testRect)
         #expect(geometry.titleBarHeight == titleBarHeight)
     }
 
@@ -41,7 +41,7 @@ struct FrameGeometryTests {
 
         // Title bar should be at the bottom of the frame
         #expect(titleBarRect.origin.x == testRect.origin.x)
-        #expect(titleBarRect.origin.y == testRect.origin.y + testRect.size.height - titleBarHeight)
+        #expect(titleBarRect.origin.y == testRect.origin.y)
         #expect(titleBarRect.size.width == testRect.size.width)
         #expect(titleBarRect.size.height == titleBarHeight)
     }
@@ -54,17 +54,17 @@ struct FrameGeometryTests {
         let expectedHeight = testRect.size.height / 2
 
         // Check top geometry
-        #expect(top.rect.origin.x == testRect.origin.x)
-        #expect(top.rect.origin.y == testRect.origin.y)
-        #expect(top.rect.size.width == testRect.size.width)
-        #expect(top.rect.size.height == expectedHeight)
+        #expect(top.frameRect.origin.x == testRect.origin.x)
+        #expect(top.frameRect.origin.y == testRect.origin.y)
+        #expect(top.frameRect.size.width == testRect.size.width)
+        #expect(top.frameRect.size.height == expectedHeight)
         #expect(top.titleBarHeight == titleBarHeight)
 
         // Check bottom geometry
-        #expect(bottom.rect.origin.x == testRect.origin.x)
-        #expect(bottom.rect.origin.y == testRect.origin.y + expectedHeight)
-        #expect(bottom.rect.size.width == testRect.size.width)
-        #expect(bottom.rect.size.height == expectedHeight)
+        #expect(bottom.frameRect.origin.x == testRect.origin.x)
+        #expect(bottom.frameRect.origin.y == testRect.origin.y + expectedHeight)
+        #expect(bottom.frameRect.size.width == testRect.size.width)
+        #expect(bottom.frameRect.size.height == expectedHeight)
         #expect(bottom.titleBarHeight == titleBarHeight)
     }
 
@@ -76,17 +76,17 @@ struct FrameGeometryTests {
         let expectedWidth = testRect.size.width / 2
 
         // Check left geometry
-        #expect(left.rect.origin.x == testRect.origin.x)
-        #expect(left.rect.origin.y == testRect.origin.y)
-        #expect(left.rect.size.width == expectedWidth)
-        #expect(left.rect.size.height == testRect.size.height)
+        #expect(left.frameRect.origin.x == testRect.origin.x)
+        #expect(left.frameRect.origin.y == testRect.origin.y)
+        #expect(left.frameRect.size.width == expectedWidth)
+        #expect(left.frameRect.size.height == testRect.size.height)
         #expect(left.titleBarHeight == titleBarHeight)
 
         // Check right geometry
-        #expect(right.rect.origin.x == testRect.origin.x + expectedWidth)
-        #expect(right.rect.origin.y == testRect.origin.y)
-        #expect(right.rect.size.width == expectedWidth)
-        #expect(right.rect.size.height == testRect.size.height)
+        #expect(right.frameRect.origin.x == testRect.origin.x + expectedWidth)
+        #expect(right.frameRect.origin.y == testRect.origin.y)
+        #expect(right.frameRect.size.width == expectedWidth)
+        #expect(right.frameRect.size.height == testRect.size.height)
         #expect(right.titleBarHeight == titleBarHeight)
     }
 
@@ -94,7 +94,7 @@ struct FrameGeometryTests {
     func testFromRectFactory() {
         let geometry = FrameGeometry.fromRect(testRect, titleBarHeight: titleBarHeight)
 
-        #expect(geometry.rect == testRect)
+        #expect(geometry.frameRect == testRect)
         #expect(geometry.titleBarHeight == titleBarHeight)
     }
 }

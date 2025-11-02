@@ -11,9 +11,10 @@ class FrameWindow {
         window.contentView as? FrameTitleBarView
     }
 
-    init() {
+    init(rect: CGRect) {
+        let frame = FrameWindow.invertY(rect: rect)
         let panel = NSPanel(
-            contentRect: .zero,
+            contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -35,13 +36,17 @@ class FrameWindow {
         self.window = panel
     }
 
-    func updateOverlay(rect: CGRect, tabs: [WindowTab]) {
-        self.window.setFrame(rect, display: true)
+    func updateOverlay(tabs: [WindowTab]) {
         self.titleBarView?.setupTabs(tabs: tabs)
     }
 
     func clear() {
-        self.window.setIsVisible(false)
         self.titleBarView?.setupTabs(tabs: [])
+    }
+
+    private static func invertY(rect: CGRect) -> NSRect {
+        let screenHeight = NSScreen.main?.frame.height ?? 0
+        let convertedY = screenHeight - rect.origin.y - rect.size.height
+        return NSRect(x: rect.origin.x, y: convertedY, width: rect.size.width, height: rect.size.height)
     }
 }
