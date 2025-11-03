@@ -8,13 +8,21 @@ import ApplicationServices
 @MainActor
 class WindowManager {
     var config: ConfigController = ConfigController()
-    weak var activeFrame: FrameController? = nil
-    var rootFrame: FrameController? = nil
+    var frameManager: FrameManager?
     let logger: Logger
     let tracker: WindowTracker
 
     // Map of AXUIElement to WindowController for quick lookup
     var windowControllerMap: [AXUIElement: WindowController] = [:]
+
+    // Computed properties that delegate to frameManager
+    var activeFrame: FrameController? {
+        frameManager?.activeFrame
+    }
+
+    var rootFrame: FrameController? {
+        frameManager?.rootFrame
+    }
 
     init(logger: Logger) {
         self.logger = logger
@@ -24,7 +32,12 @@ class WindowManager {
     func initialize() {
         self.logger.debug("Initializing WindowManager")
 
-        self.initializeLayout()
+        // Initialize frame manager
+        guard let screen = NSScreen.main else { return }
+        self.frameManager = FrameManager(config: config)
+        self.frameManager?.initializeFromScreen(screen)
+
+        inspectLayout()
 
         // Start tracking to discover existing windows
         self.tracker.startTracking()
@@ -73,15 +86,11 @@ class WindowManager {
     }
 
     func splitHorizontally() throws {
-        if let frame = self.activeFrame {
-            self.activeFrame = try frame.split(direction: Direction.Horizontal)
-        }
+        try frameManager?.splitHorizontally()
     }
 
     func splitVertically() throws {
-        if let frame = self.activeFrame {
-            self.activeFrame = try frame.split(direction: Direction.Vertical)
-        }
+        try frameManager?.splitVertically()
     }
 
     // MARK: - Window Event Handlers
@@ -124,14 +133,6 @@ class WindowManager {
     }
 
     // MARK: - Layout
-
-    private func initializeLayout() {
-        guard let screen = NSScreen.main else { return }
-        self.rootFrame = FrameController.fromScreen(screen, config: self.config)
-        self.activeFrame = self.rootFrame
-
-        inspectLayout()
-    }
 
     private func inspectLayout() {
         if let frame = self.rootFrame {

@@ -20,9 +20,11 @@ struct WindowManagerTests {
         let config = ConfigController()
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-        // Manually set up frame without calling initialize()
-        windowManager.rootFrame = FrameController(rect: testFrame, config: config)
-        windowManager.activeFrame = windowManager.rootFrame
+        // Set up FrameManager with a test frame
+        let frameManager = FrameManager(config: config)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config)
+        frameManager.activeFrame = frameManager.rootFrame
+        windowManager.frameManager = frameManager
 
         guard let frame = windowManager.activeFrame else {
             Issue.record("No active frame after setup")
@@ -60,9 +62,11 @@ struct WindowManagerTests {
         let config = ConfigController()
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-        // Manually set up frame without calling initialize()
-        windowManager.rootFrame = FrameController(rect: testFrame, config: config)
-        windowManager.activeFrame = windowManager.rootFrame
+        // Set up FrameManager with a test frame
+        let frameManager = FrameManager(config: config)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config)
+        frameManager.activeFrame = frameManager.rootFrame
+        windowManager.frameManager = frameManager
 
         guard let frame = windowManager.activeFrame else {
             Issue.record("No active frame after setup")
