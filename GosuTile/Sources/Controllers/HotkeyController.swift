@@ -53,7 +53,20 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
                 (.character("g"), .maskCommand),
                 (.character("s"), [])
             ],
-            description: "cmd+g, s: split frame horizontally",
+            description: "cmd+g, s: split frame vertically",
+            action: {
+                Task { @MainActor in
+                    try wm.splitVertically()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("g"), .maskCommand),
+                (.character("s"), .maskShift)
+            ],
+            description: "cmd+g, shift+s: split frame horizontally",
             action: {
                 Task { @MainActor in
                     try wm.splitHorizontally()
@@ -64,12 +77,51 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
         service.addShortcut(
             steps: [
                 (.character("g"), .maskCommand),
-                (.character("s"), .maskShift)
+                (.character("h"), [])
             ],
-            description: "cmd+g, shift+s: split frame vertically",
+            description: "cmd+g, h: navigate to left frame",
             action: {
                 Task { @MainActor in
-                    try wm.splitVertically()
+                    wm.navigateLeft()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("g"), .maskCommand),
+                (.character("j"), [])
+            ],
+            description: "cmd+g, j: navigate to bottom frame",
+            action: {
+                Task { @MainActor in
+                    wm.navigateDown()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("g"), .maskCommand),
+                (.character("k"), [])
+            ],
+            description: "cmd+g, k: navigate to top frame",
+            action: {
+                Task { @MainActor in
+                    wm.navigateUp()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("g"), .maskCommand),
+                (.character("l"), [])
+            ],
+            description: "cmd+g, l: navigate to right frame",
+            action: {
+                Task { @MainActor in
+                    wm.navigateRight()
                 }
             }
         )

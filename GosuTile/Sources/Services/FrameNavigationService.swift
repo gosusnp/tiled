@@ -57,22 +57,22 @@ class FrameNavigationService {
     /// Determines if we can navigate in the given direction given our position as a child and parent's split direction.
     /// For binary splits:
     /// - Child 0 is left/top, Child 1 is right/bottom
-    /// - Horizontal split: child 0 is left, child 1 is right
-    /// - Vertical split: child 0 is top, child 1 is bottom
+    /// - Vertical split: child 0 is left, child 1 is right (side-by-side)
+    /// - Horizontal split: child 0 is top, child 1 is bottom (stacked)
     private func shouldNavigate(direction: NavigationDirection, childIndex: Int, parentSplitDirection: Direction) -> Bool {
         switch direction {
         case .left:
-            // Need horizontal split and be on the right (child 1)
-            return parentSplitDirection == .Horizontal && childIndex == 1
-        case .right:
-            // Need horizontal split and be on the left (child 0)
-            return parentSplitDirection == .Horizontal && childIndex == 0
-        case .up:
-            // Need vertical split and be on the bottom (child 1)
+            // Need vertical split and be on the right (child 1)
             return parentSplitDirection == .Vertical && childIndex == 1
-        case .down:
-            // Need vertical split and be on the top (child 0)
+        case .right:
+            // Need vertical split and be on the left (child 0)
             return parentSplitDirection == .Vertical && childIndex == 0
+        case .up:
+            // Need horizontal split and be on the bottom (child 1)
+            return parentSplitDirection == .Horizontal && childIndex == 1
+        case .down:
+            // Need horizontal split and be on the top (child 0)
+            return parentSplitDirection == .Horizontal && childIndex == 0
         }
     }
 

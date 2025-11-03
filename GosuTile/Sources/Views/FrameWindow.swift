@@ -49,6 +49,22 @@ class FrameWindow: FrameWindowProtocol {
         self.titleBarView?.setActive(isActive)
     }
 
+    func hide() {
+        window.orderOut(nil)
+    }
+
+    func show() {
+        window.orderFront(nil)
+    }
+
+    func close() {
+        window.close()
+    }
+
+    deinit {
+        window.close()
+    }
+
     private static func invertY(rect: CGRect) -> NSRect {
         let screenHeight = NSScreen.main?.frame.height ?? 0
         let convertedY = screenHeight - rect.origin.y - rect.size.height

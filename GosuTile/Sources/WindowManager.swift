@@ -34,7 +34,7 @@ class WindowManager {
 
         // Initialize frame manager
         guard let screen = NSScreen.main else { return }
-        self.frameManager = FrameManager(config: config)
+        self.frameManager = FrameManager(config: config, logger: logger)
         self.frameManager?.initializeFromScreen(screen)
 
         inspectLayout()
@@ -91,6 +91,24 @@ class WindowManager {
 
     func splitVertically() throws {
         try frameManager?.splitVertically()
+    }
+
+    // MARK: - Navigation Operations
+
+    func navigateLeft() {
+        frameManager?.navigateLeft()
+    }
+
+    func navigateRight() {
+        frameManager?.navigateRight()
+    }
+
+    func navigateUp() {
+        frameManager?.navigateUp()
+    }
+
+    func navigateDown() {
+        frameManager?.navigateDown()
     }
 
     // MARK: - Window Event Handlers

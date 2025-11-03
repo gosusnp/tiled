@@ -120,6 +120,9 @@ class FrameController {
         child1.setActive(true)
         child2.setActive(false)
 
+        // Hide parent frame's window since children now own the space
+        self.frameWindow.hide()
+
         self.refreshOverlay()
         return child1
     }

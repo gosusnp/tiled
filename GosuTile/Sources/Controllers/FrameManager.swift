@@ -11,10 +11,12 @@ class FrameManager {
     var activeFrame: FrameController?
 
     private let navigationService: FrameNavigationService
+    private let logger: Logger
 
-    init(config: ConfigController) {
+    init(config: ConfigController, logger: Logger = Logger()) {
         self.config = config
         self.navigationService = FrameNavigationService()
+        self.logger = logger
     }
 
     // MARK: - Initialization
