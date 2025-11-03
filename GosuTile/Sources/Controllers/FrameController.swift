@@ -9,11 +9,12 @@ class FrameController {
     let config: ConfigController
     let styleProvider: StyleProvider
     private let geometry: FrameGeometry
-    let frameWindow: FrameWindow
+    let frameWindow: FrameWindowProtocol
     let windowStack: WindowStackController
 
     var children: [FrameController] = []
     weak var parent: FrameController? = nil
+    var splitDirection: Direction? = nil  // The direction this frame was split (if it has children)
     private var isActive: Bool = false
 
     var activeWindow: WindowController? {
@@ -25,19 +26,19 @@ class FrameController {
         self.frameWindow.setActive(isActive)
     }
 
-    init(rect: CGRect, config: ConfigController) {
+    init(rect: CGRect, config: ConfigController, frameWindow: FrameWindowProtocol? = nil) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
-        self.frameWindow = FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
+        self.frameWindow = frameWindow ?? FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
-    private init(geometry: FrameGeometry, config: ConfigController) {
+    private init(geometry: FrameGeometry, config: ConfigController, frameWindow: FrameWindowProtocol? = nil) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = geometry
-        self.frameWindow = FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
+        self.frameWindow = frameWindow ?? FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
@@ -111,6 +112,7 @@ class FrameController {
         let child2 = FrameController(geometry: geo2, config: self.config)
         child2.parent = self
         self.children = [child1, child2]
+        self.splitDirection = direction
 
         try child1.takeWindowsFrom(self)
 

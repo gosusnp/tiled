@@ -5,7 +5,7 @@ import Cocoa
 import ApplicationServices
 
 @MainActor
-class FrameWindow {
+class FrameWindow: FrameWindowProtocol {
     private var window: NSWindow
     private var titleBarView: FrameTitleBarView? {
         window.contentView as? FrameTitleBarView
