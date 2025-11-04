@@ -203,6 +203,7 @@ class WindowPollingService: @unchecked Sendable {
     /// Get all currently visible windows on the system
     /// Note: Order doesn't matter for polling - we only detect what opened/closed.
     /// Z-index sorting is only needed for initial discovery in WindowTracker.
+    /// Does not filter multi-desktop windows - relies on initial filtered state from WindowTracker.
     ///
     /// - Returns: Array of AXUIElement representing all visible windows
     private func getAllWindowsForPolling() -> [AXUIElement] {

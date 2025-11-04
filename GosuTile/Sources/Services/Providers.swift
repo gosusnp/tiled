@@ -45,6 +45,10 @@ protocol WindowProvider {
 
     /// Get the z-index order of windows
     func getWindowZOrder() -> [[String: Any]]?
+
+    /// Check if a window is on the current desktop (on-screen)
+    /// Returns false for windows on other desktops or minimized
+    func isWindowOnCurrentDesktop(_ window: AXUIElement) -> Bool
 }
 
 // MARK: - Real Implementation
@@ -88,5 +92,28 @@ class RealWindowProvider: WindowProvider {
             [.optionOnScreenOnly, .excludeDesktopElements],
             kCGNullWindowID
         ) as? [[String: Any]]
+    }
+
+    func isWindowOnCurrentDesktop(_ window: AXUIElement) -> Bool {
+        // Get the window's position
+        var posRef: CFTypeRef?
+        let posResult = AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posRef)
+        guard posResult == .success, let posValue = posRef as! AXValue? else {
+            return false
+        }
+
+        var position = CGPoint.zero
+        AXValueGetValue(posValue, .cgPoint, &position)
+
+        // Get the current screen's visible frame
+        // A window on a different desktop will have coordinates outside any screen's visible area
+        for screen in NSScreen.screens {
+            if screen.visibleFrame.contains(CGPoint(x: position.x + 1, y: position.y + 1)) {
+                // Window's top-left corner is roughly within a screen's visible area
+                return true
+            }
+        }
+
+        return false
     }
 }

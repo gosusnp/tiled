@@ -188,7 +188,24 @@ class WindowTracker: @unchecked Sendable {
             let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
 
             if result == .success, let windowList = windowsRef as? [AXUIElement] {
-                windows += windowList
+                // Filter out windows on other desktops (multi-desktop support not yet implemented)
+                let onCurrentDesktop = windowList.filter { window in
+                    // Get window position to check if it's on current desktop
+                    var posRef: CFTypeRef?
+                    let posResult = AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posRef)
+                    guard posResult == .success, let posValue = posRef as! AXValue? else {
+                        return false
+                    }
+
+                    var position = CGPoint.zero
+                    AXValueGetValue(posValue, .cgPoint, &position)
+
+                    // Check if window is within any screen's visible area
+                    return NSScreen.screens.contains { screen in
+                        screen.visibleFrame.contains(CGPoint(x: position.x + 1, y: position.y + 1))
+                    }
+                }
+                windows += onCurrentDesktop
             }
         }
 
