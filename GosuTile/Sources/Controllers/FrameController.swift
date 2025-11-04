@@ -17,7 +17,7 @@ class FrameController {
     var splitDirection: Direction? = nil  // The direction this frame was split (if it has children)
     private var isActive: Bool = false
 
-    var activeWindow: WindowController? {
+    var activeWindow: WindowControllerProtocol? {
         self.windowStack.activeWindow
     }
 
@@ -53,7 +53,7 @@ class FrameController {
         }
     }
 
-    func addWindow(_ window: WindowController, shouldFocus: Bool = false) throws {
+    func addWindow(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
         window.frame = self  // Set the frame reference
         try self.windowStack.add(window, shouldFocus: shouldFocus)
 
@@ -63,7 +63,7 @@ class FrameController {
         try window.move(to: targetRect.origin)
     }
 
-    func removeWindow(_ window: WindowController) -> Bool {
+    func removeWindow(_ window: WindowControllerProtocol) -> Bool {
         let removed = self.windowStack.remove(window)
         if removed {
             window.frame = nil  // Clear the frame reference

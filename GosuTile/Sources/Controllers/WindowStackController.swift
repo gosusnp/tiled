@@ -6,7 +6,7 @@ import Cocoa
 @MainActor
 class WindowStackController {
     private let styleProvider: StyleProvider
-    private var windows: [WindowController] = []
+    private var windows: [WindowControllerProtocol] = []
     private(set) var activeIndex: Int = 0
 
     init(styleProvider: StyleProvider) {
@@ -14,7 +14,7 @@ class WindowStackController {
     }
 
     // Safe getters
-    var activeWindow: WindowController? {
+    var activeWindow: WindowControllerProtocol? {
         guard !windows.isEmpty && activeIndex < windows.count else { return nil }
         return windows[activeIndex]
     }
@@ -23,7 +23,7 @@ class WindowStackController {
         windows.count
     }
 
-    var all: [WindowController] {
+    var all: [WindowControllerProtocol] {
         windows
     }
 
@@ -38,7 +38,7 @@ class WindowStackController {
     }
 
     // Window management
-    func add(_ window: WindowController, shouldFocus: Bool = false) throws {
+    func add(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
         // Validate no duplicates
         guard !windows.contains(where: { $0 === window }) else {
             throw WindowStackError.duplicateWindow
@@ -49,7 +49,7 @@ class WindowStackController {
         }
     }
 
-    func remove(_ window: WindowController) -> Bool {
+    func remove(_ window: WindowControllerProtocol) -> Bool {
         guard let index = windows.firstIndex(where: { $0 === window }) else {
             return false
         }

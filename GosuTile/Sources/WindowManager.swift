@@ -13,7 +13,7 @@ class WindowManager {
     let tracker: WindowTracker
 
     // Map of AXUIElement to WindowController for quick lookup
-    var windowControllerMap: [AXUIElement: WindowController] = [:]
+    var windowControllerMap: [AXUIElement: WindowControllerProtocol] = [:]
 
     // Computed properties that delegate to frameManager
     var activeFrame: FrameController? {

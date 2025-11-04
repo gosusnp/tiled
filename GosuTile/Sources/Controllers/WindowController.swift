@@ -10,7 +10,7 @@ enum WindowError: Error {
     case invalidWindow
 }
 
-class WindowController {
+class WindowController: WindowControllerProtocol {
     let window: WindowModel
     weak var frame: FrameController?
 

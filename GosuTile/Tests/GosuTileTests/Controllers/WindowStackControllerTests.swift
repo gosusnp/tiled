@@ -5,22 +5,6 @@ import Cocoa
 import Testing
 @testable import GosuTile
 
-// Mock WindowController for testing
-class MockWindowController: WindowController {
-    nonisolated(unsafe) private static var elementCounter: Int = 1
-
-    init(title: String) {
-        // Create a unique WindowModel for testing
-        // Use different PIDs to ensure unique elements
-        let pid = pid_t(Self.elementCounter)
-        Self.elementCounter += 1
-
-        let element = AXUIElementCreateApplication(pid)
-        let windowModel = WindowModel(element: element, title: title, appName: "MockApp")
-        super.init(window: windowModel)
-    }
-}
-
 class MockStyleProvider: StyleProvider {}
 
 @Suite("WindowStackController Tests")
