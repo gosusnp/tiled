@@ -201,14 +201,14 @@ class WindowPollingService: @unchecked Sendable {
     }
 
     /// Get all currently visible windows on the system
-    /// This should mirror the logic from WindowTracker.getAllWindows()
-    /// Returns windows sorted by z-index (front-to-back)
+    /// Note: Order doesn't matter for polling - we only detect what opened/closed.
+    /// Z-index sorting is only needed for initial discovery in WindowTracker.
     ///
     /// - Returns: Array of AXUIElement representing all visible windows
     private func getAllWindowsForPolling() -> [AXUIElement] {
         var windows: [AXUIElement] = []
 
-        for app in getApplicationsSortedByZIndex() {
+        for app in workspaceProvider.runningApplications {
             guard app.activationPolicy == .regular && !app.isHidden else { continue }
 
             let appWindows = windowProvider.getWindowsForApplication(app)
@@ -216,41 +216,6 @@ class WindowPollingService: @unchecked Sendable {
         }
 
         return windows
-    }
-
-    /// Get applications sorted by z-index (front-to-back order)
-    ///
-    /// - Returns: Array of NSRunningApplication sorted by their frontmost window's z-index
-    private func getApplicationsSortedByZIndex() -> [NSRunningApplication] {
-        let apps = workspaceProvider.runningApplications
-            .filter { $0.activationPolicy == .regular }
-
-        // Get window list in front-to-back order
-        guard let windowList = windowProvider.getWindowZOrder() else {
-            return apps
-        }
-
-        // Map PID to lowest (frontmost) window index
-        var pidToZIndex: [pid_t: Int] = [:]
-
-        for (index, windowInfo) in windowList.enumerated() {
-            if let pid = windowInfo[kCGWindowOwnerPID as String] as? pid_t {
-                // Only store the first (frontmost) window for each PID
-                if pidToZIndex[pid] == nil {
-                    pidToZIndex[pid] = index
-                }
-            }
-        }
-
-        return apps
-            // Filter apps with nil zIndex, likely on different screen
-            .filter { pidToZIndex[$0.processIdentifier] != nil }
-            // Sort apps by their frontmost window's z-index
-            .sorted { app1, app2 in
-            let z1 = pidToZIndex[app1.processIdentifier] ?? Int.max
-            let z2 = pidToZIndex[app2.processIdentifier] ?? Int.max
-            return z1 < z2  // Lower index = more in front
-        }
     }
 
     /// Get the currently focused window
