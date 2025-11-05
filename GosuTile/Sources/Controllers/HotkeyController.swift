@@ -24,10 +24,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("n"), [])
+                (.character(">"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, n: next window",
+            description: "cmd+shift+.: cycle next window in frame",
             action: {
                 Task { @MainActor in
                     wm.nextWindow()
@@ -37,10 +36,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("p"), [])
+                (.character("<"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, p: previous window",
+            description: "cmd+shift+,: cycle previous window in frame",
             action: {
                 Task { @MainActor in
                     wm.previousWindow()
