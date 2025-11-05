@@ -43,6 +43,12 @@ class FrameManager {
         activeFrame = newActive
     }
 
+    func closeActiveFrame() throws {
+        guard let current = activeFrame else { return }
+        let newActive = try current.closeFrame()
+        activeFrame = newActive
+    }
+
     // MARK: - Navigation Operations
 
     func navigateLeft() {

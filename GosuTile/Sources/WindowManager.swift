@@ -93,6 +93,10 @@ class WindowManager {
         try frameManager?.splitVertically()
     }
 
+    func closeActiveFrame() throws {
+        try frameManager?.closeActiveFrame()
+    }
+
     // MARK: - Navigation Operations
 
     func navigateLeft() {

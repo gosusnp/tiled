@@ -188,4 +188,79 @@ struct FrameControllerTests {
         #expect(frame1.windowStack.count == 0)
         #expect(frame2.windowStack.count == 2)
     }
+
+    @Test("Cannot close root frame (has no parent)")
+    func testCannotCloseRootFrame() throws {
+        let rootFrame = FrameController(rect: testFrame, config: config)
+        let window = MockWindowController(title: "Window 1")
+
+        try rootFrame.windowStack.add(window, shouldFocus: false)
+        window.frame = rootFrame
+
+        // Try to close root frame - should throw
+        var threwError = false
+        do {
+            _ = try rootFrame.closeFrame()
+        } catch FrameControllerError.cannotCloseRootFrame {
+            threwError = true
+        }
+        #expect(threwError)
+    }
+
+    @Test("Close returns the active frame and removes closed frame from children")
+    func testCloseReturnsActiveFrame() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+
+        // Create split - parent now has two children
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        #expect(parent.children.count == 2)
+
+        // Close child1
+        let nextActive = try child1.closeFrame()
+
+        // Parent should merge back - nextActive should be parent with no children
+        #expect(nextActive === parent)
+        #expect(parent.children.count == 0)
+        #expect(parent.splitDirection == nil)
+    }
+
+    @Test("Closing a frame returns appropriate next active")
+    func testCloseReturnsAppropriateActiveFrame() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+
+        // Create split
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        #expect(parent.children.count == 2)
+
+        // Close child1 - parent should merge back
+        let nextActive = try child1.closeFrame()
+
+        // Next active should be parent after merge
+        #expect(nextActive === parent)
+        #expect(parent.children.count == 0)
+        #expect(parent.splitDirection == nil)
+    }
+
+    @Test("Close merges only two children properly")
+    func testCloseWithTwoChildren() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+
+        // Create split gives exactly 2 children
+        let child1 = try parent.split(direction: .Horizontal)
+        let child2 = parent.children[1]
+
+        #expect(parent.children.count == 2)
+        #expect(parent.splitDirection == .Horizontal)
+
+        // Close child1
+        _ = try child1.closeFrame()
+
+        // Parent should be fully merged back with no children and ready for new split
+        #expect(parent.children.count == 0)
+        #expect(parent.splitDirection == nil)
+    }
 }

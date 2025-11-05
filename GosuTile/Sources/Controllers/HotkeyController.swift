@@ -119,5 +119,17 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
                 }
             }
         )
+
+        service.addShortcut(
+            steps: [
+                (.character("c"), [.maskCommand, .maskShift]),
+            ],
+            description: "cmd+shift+c: close active frame",
+            action: {
+                Task { @MainActor in
+                    try wm.closeActiveFrame()
+                }
+            }
+        )
     }
 }

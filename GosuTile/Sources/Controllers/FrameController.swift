@@ -4,6 +4,13 @@
 import Cocoa
 import ApplicationServices
 
+// MARK: - Error Types
+
+enum FrameControllerError: Error {
+    case cannotCloseRootFrame
+    case frameNotInParent
+}
+
 @MainActor
 class FrameController {
     let config: ConfigController
@@ -125,6 +132,53 @@ class FrameController {
 
         self.refreshOverlay()
         return child1
+    }
+
+    /// Close this frame and redistribute its windows
+    /// - Returns: The frame that should become active after close
+    /// - Throws: If this is the root frame and only frame left
+    func closeFrame() throws -> FrameController? {
+        // Can't close if this is the root frame
+        guard let parent = self.parent else {
+            throw FrameControllerError.cannotCloseRootFrame
+        }
+
+        // Get all windows to redistribute
+        let windowsToMove = self.windowStack.all
+
+        // Find sibling and index of this frame in parent
+        let myIndex = parent.children.firstIndex(where: { $0 === self })
+        guard let myIndex = myIndex else {
+            throw FrameControllerError.frameNotInParent
+        }
+
+        // In a binary tree, we always have exactly 2 children (from the split)
+        // So closing one child always means merging back to parent
+        precondition(parent.children.count == 2)
+
+        let sibling = parent.children[myIndex == 0 ? 1 : 0]
+
+        // Parent takes windows from both children
+        try parent.takeWindowsFrom(self)
+        try parent.takeWindowsFrom(sibling)
+
+        // Remove all children from parent (it's no longer split)
+        parent.children.removeAll()
+        parent.splitDirection = nil
+
+        // Show parent frame and set active
+        parent.frameWindow.show()
+        parent.setActive(true)
+
+        // Update frame references
+        for window in windowsToMove {
+            window.frame = parent
+        }
+
+        // Refresh overlay
+        parent.refreshOverlay()
+
+        return parent
     }
 
     func toString() -> String {
