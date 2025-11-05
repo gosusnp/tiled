@@ -171,7 +171,8 @@ class WindowPollingService: @unchecked Sendable {
         for (cachedKey, cachedWindow) in cachedWindowState {
             if !currentWindowKeys.contains(cachedKey) {
                 // Window was closed
-                emitWindowClosedWithDeduplication(cachedWindow)
+                // Pass the cached key directly - don't recompute it on dead windows
+                emitWindowClosedWithDeduplication(cachedWindow, cachedKey: cachedKey)
             }
         }
 
@@ -247,32 +248,32 @@ class WindowPollingService: @unchecked Sendable {
     /// - Parameter element: The AXUIElement to create a key for
     /// - Returns: A stable unique identifier for this poll cycle
     private func getWindowKey(_ element: AXUIElement) -> String {
-        // Create a stable key based on intrinsic window properties
-        // PID + element.hashValue is unique and stable across polling cycles
+        // Get stable window ID (persists across sleep/wake)
+        if let windowID = windowProvider.getWindowID(for: element) {
+            return "window:\(windowID)"
+        }
+
+        // Fallback to PID if we can't get stable ID
         var pid: pid_t = 0
         AXUIElementGetPid(element, &pid)
-
-        // Stable key: process ID + element.hashValue
-        let key = "\(pid):\(element.hashValue)"
-        return key
+        return "window:pid:\(pid):\(element.hashValue)"
     }
 
     /// Emit window closed event with deduplication
     /// Only emit if not already emitted by observer
     ///
     /// Strategy:
-    /// - Check if window is in cachedWindowState
-    /// - Only call onWindowClosed if observer hasn't already notified
-    /// - This prevents duplicate events
+    /// - Uses the cached key to avoid querying dead windows
+    /// - Dead windows can't be queried with getWindowID(), so we pass the key directly
+    /// - Emits the close event since we detected it in polling
     ///
-    /// - Parameter element: The window that was closed
-    private func emitWindowClosedWithDeduplication(_ element: AXUIElement) {
-        // Check if this window is in the cache (i.e., was previously known)
-        let key = getWindowKey(element)
-        if cachedWindowState[key] != nil {
-            // It was in cache, so we haven't emitted yet
-            onWindowClosed?(element)
-        }
+    /// - Parameters:
+    ///   - element: The window that was closed
+    ///   - cachedKey: The key used in the cache (already computed from live window)
+    private func emitWindowClosedWithDeduplication(_ element: AXUIElement, cachedKey: String) {
+        // We have the cached key, so we know this window was previously tracked
+        // Emit the close event
+        onWindowClosed?(element)
     }
 
     /// Emit window opened event with deduplication

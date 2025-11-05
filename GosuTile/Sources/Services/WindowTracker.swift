@@ -8,6 +8,10 @@ class WindowTracker: @unchecked Sendable {
     let logger: Logger
     private(set) var windows: [AXUIElement] = []
 
+    /// Track window IDs (CGWindowID) to handle sleep/wake deduplication
+    /// CGWindowID is stable across sleep/wake cycles unlike AXUIElement references
+    private var trackedWindowIDs: Set<CGWindowID> = []
+
     var onWindowOpened: ((AXUIElement) -> Void)?
     var onWindowClosed: ((AXUIElement) -> Void)?
     var onWindowFocused: ((AXUIElement) -> Void)?
@@ -20,8 +24,12 @@ class WindowTracker: @unchecked Sendable {
     /// Polling service for periodic window state validation (lazy initialization)
     private var pollingService: WindowPollingService!
 
-    init(logger: Logger) {
+    /// Window provider for getting stable window IDs
+    private let windowProvider: WindowProvider
+
+    init(logger: Logger, windowProvider: WindowProvider = RealWindowProvider()) {
         self.logger = logger
+        self.windowProvider = windowProvider
         // MARK: - Phase 3 Integration: Step 1
         /// Observer will be initialized in startTracking() to ensure proper lifecycle
     }
@@ -132,13 +140,21 @@ class WindowTracker: @unchecked Sendable {
     /// Handle a window creation event from observer or polling service
     /// - Parameter element: The newly created window
     private func handleWindowCreated(_ element: AXUIElement) {
-        // Check if already tracked (deduplication for observer + polling)
-        guard !self.windows.contains(where: { $0 == element }) else {
+        // Get stable window ID (persists across sleep/wake)
+        guard let windowID = self.windowProvider.getWindowID(for: element) else {
+            self.logger.warning("Unable to get window ID for new window")
             return
         }
 
-        // Add to windows list
+        // Check if already tracked by stable ID (deduplication for observer + polling)
+        guard !self.trackedWindowIDs.contains(windowID) else {
+            self.logger.debug("Window already tracked by ID: \(windowID)")
+            return
+        }
+
+        // Add to windows list and tracked IDs
         self.windows.append(element)
+        self.trackedWindowIDs.insert(windowID)
 
         // Emit callback to subscribers
         self.onWindowOpened?(element)
@@ -149,12 +165,44 @@ class WindowTracker: @unchecked Sendable {
     private func handleWindowClosed(_ element: AXUIElement) {
         self.logger.debug("Window closed event received")
 
-        // Remove from windows list
-        self.windows.removeAll { $0 == element }
+        // Strategy: try to find the window by reference first (most reliable)
+        // because the AXUIElement becomes invalid after closing
+        if let index = self.windows.firstIndex(where: { $0 == element }) {
+            let closedWindow = self.windows[index]
+
+            // Get the window ID before removing (query while element still has some validity)
+            if let windowID = self.windowProvider.getWindowID(for: closedWindow) {
+                self.trackedWindowIDs.remove(windowID)
+            }
+
+            // Remove from windows list
+            self.windows.remove(at: index)
+
+            // Emit callback to subscribers
+            self.onWindowClosed?(element)
+            self.logger.debug("Window removed from tracker, total windows: \(self.windows.count)")
+            return
+        }
+
+        // Fallback: window not found by reference
+        // Try to identify by getting ID from the closed element and matching in our list
+        if let windowID = self.windowProvider.getWindowID(for: element) {
+            self.trackedWindowIDs.remove(windowID)
+
+            // Try to find and remove by ID comparison
+            self.windows.removeAll { window in
+                if let wID = self.windowProvider.getWindowID(for: window), wID == windowID {
+                    return true
+                }
+                return false
+            }
+        } else {
+            // Last resort: just try reference comparison for removal
+            self.windows.removeAll { $0 == element }
+        }
 
         // Emit callback to subscribers
         self.onWindowClosed?(element)
-
         self.logger.debug("Window removed from tracker, total windows: \(self.windows.count)")
     }
 
@@ -205,6 +253,14 @@ class WindowTracker: @unchecked Sendable {
                         screen.visibleFrame.contains(CGPoint(x: position.x + 1, y: position.y + 1))
                     }
                 }
+
+                // Track windows by stable ID
+                for window in onCurrentDesktop {
+                    if let windowID = self.windowProvider.getWindowID(for: window) {
+                        self.trackedWindowIDs.insert(windowID)
+                    }
+                }
+
                 windows += onCurrentDesktop
             }
         }
