@@ -3,7 +3,7 @@
 
 import Cocoa
 import Testing
-@testable import GosuTile
+@testable import Tiled
 
 @Suite("FrameManager Tests")
 @MainActor

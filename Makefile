@@ -2,16 +2,16 @@
 # Copyright (c) 2025 Jimmy Ma
 
 build:
-	make -C GosuTile build
+	make -C Tiled build
 
 run:
-	make -C GosuTile run
+	make -C Tiled run
 
 test:
-	make -C GosuTile test
+	make -C Tiled test
 
 watch-run:
-	watchexec -r -e swift -w GosuTile/Sources make run
+	watchexec -r -e swift -w Tiled/Sources make run
 
 watch-test:
-	watchexec -r -e swift -w GosuTile/Sources -w GosuTile/Tests make test
+	watchexec -r -e swift -w Tiled/Sources -w Tiled/Tests make test

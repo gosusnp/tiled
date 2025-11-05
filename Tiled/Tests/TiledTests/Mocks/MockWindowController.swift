@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Jimmy Ma
 
 import Cocoa
-@testable import GosuTile
+@testable import Tiled
 
 /// Mock WindowController for testing that doesn't actually move/resize real windows
 class MockWindowController: WindowControllerProtocol {

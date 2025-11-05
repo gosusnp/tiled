@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Jimmy Ma
 
 import Cocoa
-@testable import GosuTile
+@testable import Tiled
 
 // MARK: - Window Provider Mock
 

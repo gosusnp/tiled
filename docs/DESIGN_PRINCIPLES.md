@@ -3,7 +3,7 @@
 
 # Design Principles
 
-GosuTile is built on three core principles that work together to create a resilient, predictable system.
+Tile.d is built on three core principles that work together to create a resilient, predictable system.
 
 ## 1. Single Entry Point
 

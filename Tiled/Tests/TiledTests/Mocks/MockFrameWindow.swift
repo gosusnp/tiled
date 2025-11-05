@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Jimmy Ma
 
 import Cocoa
-@testable import GosuTile
+@testable import Tiled
 
 class MockFrameWindow: FrameWindowProtocol {
     var updateOverlayCallCount = 0
