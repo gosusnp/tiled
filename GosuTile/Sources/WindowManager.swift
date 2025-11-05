@@ -115,6 +115,24 @@ class WindowManager {
         frameManager?.navigateDown()
     }
 
+    // MARK: - Move Window Operations
+
+    func moveActiveWindowLeft() throws {
+        try frameManager?.moveActiveWindowLeft()
+    }
+
+    func moveActiveWindowRight() throws {
+        try frameManager?.moveActiveWindowRight()
+    }
+
+    func moveActiveWindowUp() throws {
+        try frameManager?.moveActiveWindowUp()
+    }
+
+    func moveActiveWindowDown() throws {
+        try frameManager?.moveActiveWindowDown()
+    }
+
     // MARK: - Window Event Handlers
 
     private func onWindowOpened(_ element: AXUIElement) {

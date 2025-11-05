@@ -263,4 +263,136 @@ struct FrameControllerTests {
         #expect(parent.children.count == 0)
         #expect(parent.splitDirection == nil)
     }
+
+    @Test("Move window to adjacent frame removes from source")
+    func testMoveWindowRemovesFromSource() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window = MockWindowController(title: "Window 1")
+        try child1.windowStack.add(window, shouldFocus: false)
+        window.frame = child1
+
+        #expect(child1.windowStack.count == 1)
+        #expect(child2.windowStack.count == 0)
+
+        // Move window from child1 to child2
+        try child1.moveWindow(window, toFrame: child2)
+
+        // Window should be removed from source
+        #expect(child1.windowStack.count == 0)
+    }
+
+    @Test("Move window to adjacent frame adds to target")
+    func testMoveWindowAddsToTarget() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window = MockWindowController(title: "Window 1")
+        try child1.windowStack.add(window, shouldFocus: false)
+        window.frame = child1
+
+        // Move window from child1 to child2
+        try child1.moveWindow(window, toFrame: child2)
+
+        // Window should be added to target
+        #expect(child2.windowStack.count == 1)
+        #expect(child2.activeWindow === window)
+    }
+
+    @Test("Move window updates window frame reference")
+    func testMoveWindowUpdatesFrameReference() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window = MockWindowController(title: "Window 1")
+        try child1.windowStack.add(window, shouldFocus: false)
+        window.frame = child1
+
+        #expect(window.frame === child1)
+
+        // Move window
+        try child1.moveWindow(window, toFrame: child2)
+
+        // Frame reference should be updated
+        #expect(window.frame === child2)
+    }
+
+    @Test("Move window makes it active in target frame")
+    func testMoveWindowActivatesInTarget() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try child1.windowStack.add(window1, shouldFocus: false)
+        window1.frame = child1
+        try child2.windowStack.add(window2, shouldFocus: false)
+        window2.frame = child2
+
+        #expect(child2.activeWindow === window2)
+
+        // Move window1 to child2
+        try child1.moveWindow(window1, toFrame: child2)
+
+        // window1 should be active in child2
+        #expect(child2.activeWindow === window1)
+    }
+
+    @Test("Move window with multiple windows in source")
+    func testMoveWindowWithMultipleInSource() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try child1.windowStack.add(window1, shouldFocus: false)
+        try child1.windowStack.add(window2, shouldFocus: false)
+        try child1.windowStack.add(window3, shouldFocus: false)
+        window1.frame = child1
+        window2.frame = child1
+        window3.frame = child1
+
+        #expect(child1.windowStack.count == 3)
+
+        // Move only window2
+        try child1.moveWindow(window2, toFrame: child2)
+
+        // Source should have 2 remaining
+        #expect(child1.windowStack.count == 2)
+        #expect(child2.windowStack.count == 1)
+        #expect(child2.activeWindow === window2)
+        #expect(!child1.windowStack.all.contains(where: { $0 === window2 }))
+    }
+
+    @Test("Move active window keeps source stable")
+    func testMoveActiveWindowStability() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try child1.windowStack.add(window1, shouldFocus: false)
+        try child1.windowStack.add(window2, shouldFocus: false)
+        window1.frame = child1
+        window2.frame = child1
+
+        #expect(child1.activeWindow === window1)
+
+        // Move active window
+        try child1.moveWindow(window1, toFrame: child2)
+
+        // Active should shift to window2 in child1
+        #expect(child1.activeWindow === window2)
+    }
 }

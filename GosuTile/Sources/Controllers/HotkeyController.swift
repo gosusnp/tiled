@@ -129,5 +129,53 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
                 }
             }
         )
+
+        service.addShortcut(
+            steps: [
+                (.character("h"), [.maskCommand, .maskControl]),
+            ],
+            description: "cmd+ctrl+h: move active window to left frame",
+            action: {
+                Task { @MainActor in
+                    try wm.moveActiveWindowLeft()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("j"), [.maskCommand, .maskControl]),
+            ],
+            description: "cmd+ctrl+j: move active window to bottom frame",
+            action: {
+                Task { @MainActor in
+                    try wm.moveActiveWindowDown()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("k"), [.maskCommand, .maskControl]),
+            ],
+            description: "cmd+ctrl+k: move active window to top frame",
+            action: {
+                Task { @MainActor in
+                    try wm.moveActiveWindowUp()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("l"), [.maskCommand, .maskControl]),
+            ],
+            description: "cmd+ctrl+l: move active window to right frame",
+            action: {
+                Task { @MainActor in
+                    try wm.moveActiveWindowRight()
+                }
+            }
+        )
     }
 }

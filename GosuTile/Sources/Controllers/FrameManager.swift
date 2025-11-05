@@ -75,6 +75,33 @@ class FrameManager {
         updateActiveFrame(from: current, to: next)
     }
 
+    // MARK: - Move Window Operations
+
+    func moveActiveWindowLeft() throws {
+        try moveActiveWindow(direction: .left)
+    }
+
+    func moveActiveWindowRight() throws {
+        try moveActiveWindow(direction: .right)
+    }
+
+    func moveActiveWindowUp() throws {
+        try moveActiveWindow(direction: .up)
+    }
+
+    func moveActiveWindowDown() throws {
+        try moveActiveWindow(direction: .down)
+    }
+
+    private func moveActiveWindow(direction: NavigationDirection) throws {
+        guard let current = activeFrame else { return }
+        guard let window = current.activeWindow else { return }
+        guard let targetFrame = navigationService.findAdjacentFrame(from: current, direction: direction) else { return }
+
+        try current.moveWindow(window, toFrame: targetFrame)
+        updateActiveFrame(from: current, to: targetFrame)
+    }
+
     // MARK: - Window Management
 
     func assignWindow(_ window: WindowController, shouldFocus: Bool = false) throws {

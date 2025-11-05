@@ -431,4 +431,195 @@ struct FrameManagerTests {
         // Parent frame's window should have been hidden
         #expect(mockFrameWindow.hideCallCount >= 1)
     }
+
+    @Test("Move window left updates active frame")
+    func testMoveWindowLeftUpdatesActiveFrame() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let root = frameManager.rootFrame else {
+            Issue.record("rootFrame should not be nil")
+            return
+        }
+
+        // Create a vertical split
+        try frameManager.splitVertically()
+        guard root.children.count == 2 else {
+            Issue.record("Should have 2 children after split")
+            return
+        }
+
+        let leftChild = root.children[0]
+        let rightChild = root.children[1]
+
+        // Add window to right child
+        let window = MockWindowController(title: "Test Window")
+        try rightChild.windowStack.add(window, shouldFocus: false)
+        window.frame = rightChild
+
+        // Make right child active
+        frameManager.activeFrame = rightChild
+
+        #expect(frameManager.activeFrame === rightChild)
+
+        // Move window left
+        try frameManager.moveActiveWindowLeft()
+
+        // Active frame should now be left child
+        #expect(frameManager.activeFrame === leftChild)
+    }
+
+    @Test("Move window right updates active frame")
+    func testMoveWindowRightUpdatesActiveFrame() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let root = frameManager.rootFrame else {
+            Issue.record("rootFrame should not be nil")
+            return
+        }
+
+        // Create a vertical split
+        try frameManager.splitVertically()
+        guard root.children.count == 2 else {
+            Issue.record("Should have 2 children after split")
+            return
+        }
+
+        let leftChild = root.children[0]
+        let rightChild = root.children[1]
+
+        // Add window to left child
+        let window = MockWindowController(title: "Test Window")
+        try leftChild.windowStack.add(window, shouldFocus: false)
+        window.frame = leftChild
+
+        // Make left child active (it already is from split)
+        #expect(frameManager.activeFrame === leftChild)
+
+        // Move window right
+        try frameManager.moveActiveWindowRight()
+
+        // Active frame should now be right child
+        #expect(frameManager.activeFrame === rightChild)
+    }
+
+    @Test("Move window up updates active frame")
+    func testMoveWindowUpUpdatesActiveFrame() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let root = frameManager.rootFrame else {
+            Issue.record("rootFrame should not be nil")
+            return
+        }
+
+        // Create a horizontal split
+        try frameManager.splitHorizontally()
+        guard root.children.count == 2 else {
+            Issue.record("Should have 2 children after split")
+            return
+        }
+
+        let topChild = root.children[0]
+        let bottomChild = root.children[1]
+
+        // Add window to bottom child
+        let window = MockWindowController(title: "Test Window")
+        try bottomChild.windowStack.add(window, shouldFocus: false)
+        window.frame = bottomChild
+
+        // Make bottom child active
+        frameManager.activeFrame = bottomChild
+
+        #expect(frameManager.activeFrame === bottomChild)
+
+        // Move window up
+        try frameManager.moveActiveWindowUp()
+
+        // Active frame should now be top child
+        #expect(frameManager.activeFrame === topChild)
+    }
+
+    @Test("Move window down updates active frame")
+    func testMoveWindowDownUpdatesActiveFrame() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let root = frameManager.rootFrame else {
+            Issue.record("rootFrame should not be nil")
+            return
+        }
+
+        // Create a horizontal split
+        try frameManager.splitHorizontally()
+        guard root.children.count == 2 else {
+            Issue.record("Should have 2 children after split")
+            return
+        }
+
+        let topChild = root.children[0]
+        let bottomChild = root.children[1]
+
+        // Add window to top child
+        let window = MockWindowController(title: "Test Window")
+        try topChild.windowStack.add(window, shouldFocus: false)
+        window.frame = topChild
+
+        // Make top child active (it already is from split)
+        #expect(frameManager.activeFrame === topChild)
+
+        // Move window down
+        try frameManager.moveActiveWindowDown()
+
+        // Active frame should now be bottom child
+        #expect(frameManager.activeFrame === bottomChild)
+    }
+
+    @Test("Move window transfers ownership between frames")
+    func testMoveWindowTransfersOwnership() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let root = frameManager.rootFrame else {
+            Issue.record("rootFrame should not be nil")
+            return
+        }
+
+        // Create a vertical split
+        try frameManager.splitVertically()
+        guard root.children.count == 2 else {
+            Issue.record("Should have 2 children after split")
+            return
+        }
+
+        let leftChild = root.children[0]
+        let rightChild = root.children[1]
+
+        // Add window to left child
+        let window = MockWindowController(title: "Test Window")
+        try leftChild.windowStack.add(window, shouldFocus: false)
+        window.frame = leftChild
+
+        #expect(leftChild.windowStack.count == 1)
+        #expect(rightChild.windowStack.count == 0)
+
+        // Move window right
+        try frameManager.moveActiveWindowRight()
+
+        // Window should have moved
+        #expect(leftChild.windowStack.count == 0)
+        #expect(rightChild.windowStack.count == 1)
+        #expect(rightChild.activeWindow === window)
+    }
 }

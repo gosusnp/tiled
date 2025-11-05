@@ -90,6 +90,20 @@ class FrameController {
         self.refreshOverlay()
     }
 
+    func moveWindow(_ window: WindowControllerProtocol, toFrame targetFrame: FrameController) throws {
+        // Remove from source frame
+        guard self.removeWindow(window) else {
+            return
+        }
+
+        // Add to target frame
+        try targetFrame.addWindow(window, shouldFocus: true)
+
+        // Refresh both frames
+        self.refreshOverlay()
+        targetFrame.refreshOverlay()
+    }
+
     func takeWindowsFrom(_ other: FrameController) throws {
         // Transfer windows to this frame's stack
         try self.windowStack.takeAll(from: other.windowStack)
