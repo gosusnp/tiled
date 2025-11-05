@@ -50,10 +50,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("s"), [])
+                (.character("s"), [.maskCommand , .maskShift]),
             ],
-            description: "cmd+g, s: split frame vertically",
+            description: "cmd+shift+s: split frame vertically",
             action: {
                 Task { @MainActor in
                     try wm.splitVertically()
@@ -63,10 +62,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("s"), .maskShift)
+                (.character("v"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, shift+s: split frame horizontally",
+            description: "cmd+shift+v: split frame horizontally",
             action: {
                 Task { @MainActor in
                     try wm.splitHorizontally()
@@ -76,10 +74,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("h"), [])
+                (.character("h"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, h: navigate to left frame",
+            description: "cmd+shift+h: navigate to left frame",
             action: {
                 Task { @MainActor in
                     wm.navigateLeft()
@@ -89,10 +86,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("j"), [])
+                (.character("j"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, j: navigate to bottom frame",
+            description: "cmd+shift+j: navigate to bottom frame",
             action: {
                 Task { @MainActor in
                     wm.navigateDown()
@@ -102,10 +98,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("k"), [])
+                (.character("k"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, k: navigate to top frame",
+            description: "cmd+shift+k: navigate to top frame",
             action: {
                 Task { @MainActor in
                     wm.navigateUp()
@@ -115,10 +110,9 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
 
         service.addShortcut(
             steps: [
-                (.character("g"), .maskCommand),
-                (.character("l"), [])
+                (.character("l"), [.maskCommand, .maskShift]),
             ],
-            description: "cmd+g, l: navigate to right frame",
+            description: "cmd+shift+l: navigate to right frame",
             action: {
                 Task { @MainActor in
                     wm.navigateRight()
