@@ -78,59 +78,59 @@ class WindowManager {
     }
 
     func nextWindow() {
-        self.activeFrame?.nextWindow()
+        frameManager?.enqueueCommand(.cycleWindowForward)
     }
 
     func previousWindow() {
-        self.activeFrame?.previousWindow()
+        frameManager?.enqueueCommand(.cycleWindowBackward)
     }
 
     func splitHorizontally() throws {
-        try frameManager?.splitHorizontally()
+        frameManager?.enqueueCommand(.splitHorizontally)
     }
 
     func splitVertically() throws {
-        try frameManager?.splitVertically()
+        frameManager?.enqueueCommand(.splitVertically)
     }
 
     func closeActiveFrame() throws {
-        try frameManager?.closeActiveFrame()
+        frameManager?.enqueueCommand(.closeFrame)
     }
 
     // MARK: - Navigation Operations
 
     func navigateLeft() {
-        frameManager?.navigateLeft()
+        frameManager?.enqueueCommand(.navigateLeft)
     }
 
     func navigateRight() {
-        frameManager?.navigateRight()
+        frameManager?.enqueueCommand(.navigateRight)
     }
 
     func navigateUp() {
-        frameManager?.navigateUp()
+        frameManager?.enqueueCommand(.navigateUp)
     }
 
     func navigateDown() {
-        frameManager?.navigateDown()
+        frameManager?.enqueueCommand(.navigateDown)
     }
 
     // MARK: - Move Window Operations
 
     func moveActiveWindowLeft() throws {
-        try frameManager?.moveActiveWindowLeft()
+        frameManager?.enqueueCommand(.moveWindowLeft)
     }
 
     func moveActiveWindowRight() throws {
-        try frameManager?.moveActiveWindowRight()
+        frameManager?.enqueueCommand(.moveWindowRight)
     }
 
     func moveActiveWindowUp() throws {
-        try frameManager?.moveActiveWindowUp()
+        frameManager?.enqueueCommand(.moveWindowUp)
     }
 
     func moveActiveWindowDown() throws {
-        try frameManager?.moveActiveWindowDown()
+        frameManager?.enqueueCommand(.moveWindowDown)
     }
 
     // MARK: - Window Event Handlers
