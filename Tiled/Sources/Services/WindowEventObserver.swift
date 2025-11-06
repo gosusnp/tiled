@@ -203,9 +203,8 @@ class WindowEventObserver: @unchecked Sendable {
                 )
                 successCount += 1
             } catch {
-                logger.debug(
-                    "Failed to subscribe to \(notification) for pid \(pid): \(error)"
-                )
+                // Silently skip system processes that don't support accessibility observers
+                // (widget extensions, system services, etc.)
             }
         }
 
@@ -220,8 +219,6 @@ class WindowEventObserver: @unchecked Sendable {
         // Store reference
         appObservers[pid] = observer
         observerSubscriptions[pid] = notificationsToSubscribe
-
-        logger.info("Observer set up for pid \(pid) with \(successCount) notifications")
     }
 
     /// Create an AXObserver for a specific process
@@ -289,8 +286,6 @@ class WindowEventObserver: @unchecked Sendable {
             )
             throw ObserverError.notificationSubscriptionFailed(notification: notification as String, error: error)
         }
-
-        logger.debug("Subscribed to \(notification) for pid \(pid)")
     }
 
     // MARK: - Private: Observer Lifecycle
