@@ -134,10 +134,12 @@ Better approach: After command executes, have the processor notify views to upda
 // Future:
 private func processQueue() async {
     while let command = commandQueue.removeFirst() {
-        validateAndRepairState()
-        try? await executeCommand(command)
-        validateAndRepairState()
-        notifyViewsOfStateChange()  // Views observe and update
+        do {
+            try await executeCommand(command)
+            notifyViewsOfStateChange()  // Views observe and update
+        } catch {
+            logger.error("Command execution failed: \(error)")
+        }
     }
 }
 ```

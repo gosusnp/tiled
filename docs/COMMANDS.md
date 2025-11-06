@@ -73,9 +73,11 @@ func pollForChanges() {
 ```swift
 private func processQueue() async {
     while let command = commandQueue.removeFirst() {
-        validateAndRepairState()
-        try? await executeCommand(command)
-        validateAndRepairState()
+        do {
+            try await executeCommand(command)
+        } catch {
+            logger.error("Command execution failed: \(error)")
+        }
     }
 }
 
