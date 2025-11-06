@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Jimmy Ma
+
+import Foundation
+
+/// Commands that mutate frame state through the command queue.
+enum FrameCommand {
+    // Frame operations
+    case splitVertically
+    case splitHorizontally
+    case closeFrame
+
+    // Navigation
+    case navigateLeft
+    case navigateRight
+    case navigateUp
+    case navigateDown
+
+    // Window movement
+    case moveWindowLeft
+    case moveWindowRight
+    case moveWindowUp
+    case moveWindowDown
+
+    // Window cycling
+    case cycleWindowForward
+    case cycleWindowBackward
+
+    // Window management
+    case addWindow(WindowControllerProtocol)
+    case removeWindow(WindowControllerProtocol)
+    case focusWindow(WindowControllerProtocol)
+}

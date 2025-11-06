@@ -13,6 +13,10 @@ class FrameManager {
     private let navigationService: FrameNavigationService
     private let logger: Logger
 
+    // Command queue infrastructure
+    private var commandQueue: [FrameCommand] = []
+    private var isProcessing = false
+
     init(config: ConfigController, logger: Logger = Logger()) {
         self.config = config
         self.navigationService = FrameNavigationService()
@@ -27,6 +31,26 @@ class FrameManager {
         frame.setActive(true)
         self.rootFrame = frame
         self.activeFrame = frame
+    }
+
+    // MARK: - Command Queue
+
+    func enqueueCommand(_ command: FrameCommand) {
+        commandQueue.append(command)
+        if !isProcessing {
+            Task { await processQueue() }
+        }
+    }
+
+    private func processQueue() async {
+        isProcessing = true
+        defer { isProcessing = false }
+
+        while !commandQueue.isEmpty {
+            let command = commandQueue.removeFirst()
+            // Placeholder: validateAndRepairState() will be implemented in Phase 4
+            try? await executeCommand(command)
+        }
     }
 
     // MARK: - Frame Operations
@@ -118,10 +142,54 @@ class FrameManager {
         activeFrame?.previousWindow()
     }
 
+    // MARK: - Command Execution
+
+    private func executeCommand(_ command: FrameCommand) async throws {
+        switch command {
+        case .splitVertically:
+            try splitVertically()
+        case .splitHorizontally:
+            try splitHorizontally()
+        case .closeFrame:
+            try closeActiveFrame()
+        case .navigateLeft:
+            navigateLeft()
+        case .navigateRight:
+            navigateRight()
+        case .navigateUp:
+            navigateUp()
+        case .navigateDown:
+            navigateDown()
+        case .moveWindowLeft:
+            try moveActiveWindowLeft()
+        case .moveWindowRight:
+            try moveActiveWindowRight()
+        case .moveWindowUp:
+            try moveActiveWindowUp()
+        case .moveWindowDown:
+            try moveActiveWindowDown()
+        case .cycleWindowForward:
+            nextWindow()
+        case .cycleWindowBackward:
+            previousWindow()
+        case .addWindow(let window):
+            guard let frame = activeFrame else { return }
+            try frame.addWindow(window, shouldFocus: false)
+            frame.refreshOverlay()
+        case .removeWindow(let window):
+            let _ = activeFrame?.removeWindow(window)
+            activeFrame?.refreshOverlay()
+        case .focusWindow(let window):
+            if let frame = window.frame {
+                updateActiveFrame(from: activeFrame ?? rootFrame, to: frame)
+            }
+        }
+    }
+
     // MARK: - Private Helpers
 
-    private func updateActiveFrame(from old: FrameController, to new: FrameController) {
-        old.setActive(false)
+    private func updateActiveFrame(from old: FrameController?, to new: FrameController) {
+        old?.setActive(false)
         new.setActive(true)
         activeFrame = new
         new.activeWindow?.raise()

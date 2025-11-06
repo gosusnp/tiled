@@ -10,12 +10,12 @@ import Testing
 struct FrameManagerTests {
     let config: ConfigController
     let logger: Logger
-    let mockFrameWindow: MockFrameWindow
+    let mockFactory: MockFrameWindowFactory
 
     init() {
         self.config = ConfigController()
         self.logger = Logger()
-        self.mockFrameWindow = MockFrameWindow()
+        self.mockFactory = MockFrameWindowFactory()
     }
 
     // MARK: - Initialization Tests
@@ -38,7 +38,7 @@ struct FrameManagerTests {
     func testHorizontalSplitParentChildRelationships() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -63,7 +63,7 @@ struct FrameManagerTests {
     func testHorizontalSplitActivatesFirstChild() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -81,7 +81,7 @@ struct FrameManagerTests {
     func testNavigateRightAfterHorizontalSplit() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -108,7 +108,7 @@ struct FrameManagerTests {
     func testNavigateLeftAfterHorizontalSplit() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -138,7 +138,7 @@ struct FrameManagerTests {
     func testVerticalSplitParentChildRelationships() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -163,7 +163,7 @@ struct FrameManagerTests {
     func testNavigateDownAfterVerticalSplit() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -190,7 +190,7 @@ struct FrameManagerTests {
     func testNavigateUpAfterVerticalSplit() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -220,7 +220,7 @@ struct FrameManagerTests {
     func testNavigateThroughNestedHorizontalThenVerticalSplits() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -255,7 +255,7 @@ struct FrameManagerTests {
     func testCannotNavigateOrthogonallyToSplitDirection() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -285,7 +285,7 @@ struct FrameManagerTests {
     func testCannotNavigateLeftFromLeftChild() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -309,7 +309,7 @@ struct FrameManagerTests {
     func testCannotNavigateRightFromRightChild() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -333,10 +333,9 @@ struct FrameManagerTests {
 
     @Test("Parent frame is cleared after split")
     func testParentFrameClearedAfterSplit() throws {
-        let mockFrameWindow = MockFrameWindow()
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -344,26 +343,23 @@ struct FrameManagerTests {
             return
         }
 
-        // Reset call count before split
-        mockFrameWindow.clearCallCount = 0
+        // Get the actual mock frame window from the root frame
+        let mockWindow = root.frameWindow as? MockFrameWindow
+        mockWindow?.clearCallCount = 0
 
         // Split should clear the parent frame
         try frameManager.splitHorizontally()
 
         // Parent frame should have been cleared
-        #expect(mockFrameWindow.clearCallCount >= 1)
+        #expect((mockWindow?.clearCallCount ?? 0) >= 1)
     }
 
     @Test("Children frames are not cleared after split")
     func testChildrenFramesNotClearedAfterSplit() throws {
-        let mockFrameWindowParent = MockFrameWindow()
-        let mockFrameWindowChild1 = MockFrameWindow()
-        let mockFrameWindowChild2 = MockFrameWindow()
-
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-        let parentFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindowParent)
+        let parentFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.rootFrame = parentFrame
         frameManager.activeFrame = parentFrame
 
@@ -385,10 +381,9 @@ struct FrameManagerTests {
 
     @Test("Only leaf frames show tabs after split")
     func testOnlyLeafFramesShowTabsAfterSplit() throws {
-        let mockFrameWindow = MockFrameWindow()
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -411,10 +406,9 @@ struct FrameManagerTests {
 
     @Test("Parent frame window is hidden after split")
     func testParentFrameWindowHiddenAfterSplit() throws {
-        let mockFrameWindow = MockFrameWindow()
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -422,21 +416,22 @@ struct FrameManagerTests {
             return
         }
 
-        // Reset call count before split
-        mockFrameWindow.hideCallCount = 0
+        // Get the actual mock frame window from the root frame
+        let mockWindow = root.frameWindow as? MockFrameWindow
+        mockWindow?.hideCallCount = 0
 
         // Split should hide the parent frame window
         try frameManager.splitHorizontally()
 
         // Parent frame's window should have been hidden
-        #expect(mockFrameWindow.hideCallCount >= 1)
+        #expect((mockWindow?.hideCallCount ?? 0) >= 1)
     }
 
     @Test("Move window left updates active frame")
     func testMoveWindowLeftUpdatesActiveFrame() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -475,7 +470,7 @@ struct FrameManagerTests {
     func testMoveWindowRightUpdatesActiveFrame() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -512,7 +507,7 @@ struct FrameManagerTests {
     func testMoveWindowUpUpdatesActiveFrame() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -551,7 +546,7 @@ struct FrameManagerTests {
     func testMoveWindowDownUpdatesActiveFrame() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {
@@ -588,7 +583,7 @@ struct FrameManagerTests {
     func testMoveWindowTransfersOwnership() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, frameWindow: mockFrameWindow)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, windowFactory: mockFactory)
         frameManager.activeFrame = frameManager.rootFrame
 
         guard let root = frameManager.rootFrame else {

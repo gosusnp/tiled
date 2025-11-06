@@ -11,17 +11,17 @@ struct FrameNavigationServiceTests {
     let config: ConfigController
     let testFrame: CGRect
     let service: FrameNavigationService
-    let mockFrameWindow: MockFrameWindow
+    let mockFactory: MockFrameWindowFactory
 
     init() {
         self.config = ConfigController()
         self.testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         self.service = FrameNavigationService()
-        self.mockFrameWindow = MockFrameWindow()
+        self.mockFactory = MockFrameWindowFactory()
     }
 
     private func createTestFrame(rect: CGRect = CGRect(x: 0, y: 0, width: 1920, height: 1080)) -> FrameController {
-        FrameController(rect: rect, config: config, frameWindow: mockFrameWindow)
+        FrameController(rect: rect, config: config, windowFactory: mockFactory)
     }
 
     // MARK: - Vertical Split Tests (creates left/right frames)

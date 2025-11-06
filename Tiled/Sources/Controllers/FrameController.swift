@@ -18,6 +18,7 @@ class FrameController {
     private let geometry: FrameGeometry
     let frameWindow: FrameWindowProtocol
     let windowStack: WindowStackController
+    private let windowFactory: FrameWindowFactory
 
     var children: [FrameController] = []
     weak var parent: FrameController? = nil
@@ -33,19 +34,33 @@ class FrameController {
         self.frameWindow.setActive(isActive)
     }
 
-    init(rect: CGRect, config: ConfigController, frameWindow: FrameWindowProtocol? = nil) {
+    /// Public initializer for production use
+    init(rect: CGRect, config: ConfigController) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
-        self.frameWindow = frameWindow ?? FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
+        self.windowFactory = RealFrameWindowFactory(styleProvider: self.styleProvider)
+        self.frameWindow = self.windowFactory.createFrameWindow(geometry: self.geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
-    private init(geometry: FrameGeometry, config: ConfigController, frameWindow: FrameWindowProtocol? = nil) {
+    /// Internal initializer for testing with custom window factory
+    init(rect: CGRect, config: ConfigController, windowFactory: FrameWindowFactory) {
+        self.config = config
+        self.styleProvider = StyleProvider()
+        self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
+        self.windowFactory = windowFactory
+        self.frameWindow = windowFactory.createFrameWindow(geometry: self.geometry)
+        self.windowStack = WindowStackController(styleProvider: self.styleProvider)
+    }
+
+    /// Internal initializer for child frames created during split
+    private init(geometry: FrameGeometry, config: ConfigController, windowFactory: FrameWindowFactory) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = geometry
-        self.frameWindow = frameWindow ?? FrameWindow(geo: self.geometry, styleProvider: self.styleProvider)
+        self.windowFactory = windowFactory
+        self.frameWindow = windowFactory.createFrameWindow(geometry: geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
     }
 
@@ -128,9 +143,9 @@ class FrameController {
             ? self.geometry.splitHorizontally()
             : self.geometry.splitVertically()
 
-        let child1 = FrameController(geometry: geo1, config: self.config)
+        let child1 = FrameController(geometry: geo1, config: self.config, windowFactory: self.windowFactory)
         child1.parent = self
-        let child2 = FrameController(geometry: geo2, config: self.config)
+        let child2 = FrameController(geometry: geo2, config: self.config, windowFactory: self.windowFactory)
         child2.parent = self
         self.children = [child1, child2]
         self.splitDirection = direction
