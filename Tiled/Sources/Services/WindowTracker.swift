@@ -6,6 +6,17 @@ import ApplicationServices
 
 class WindowTracker: @unchecked Sendable {
     let logger: Logger
+
+    // MARK: - Thread Safety
+
+    /// Lock protecting windows array and trackedWindowIDs set access
+    /// Prevents data corruption from concurrent access:
+    /// - Polling loop iterates over windows every 7 seconds
+    /// - Observer and polling callbacks append/remove windows and IDs concurrently
+    /// - getAllWindows() bulk inserts during discovery
+    /// Single lock eliminates deadlock risk and simplifies synchronization
+    private let trackerLock = NSLock()
+
     private(set) var windows: [AXUIElement] = []
 
     /// Track window IDs (CGWindowID) to handle sleep/wake deduplication
@@ -59,6 +70,8 @@ class WindowTracker: @unchecked Sendable {
         }
 
         // Initial discovery - returns windows sorted by z-index (most recent first)
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
         self.windows = getAllWindows()
 
         self.logger.debug("Discovered \(self.windows.count) windows")
@@ -104,7 +117,9 @@ class WindowTracker: @unchecked Sendable {
     }
 
     func getWindows() -> [AXUIElement] {
-        return self.windows
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
+        return self.windows.map { $0 }  // Return copy to prevent caller from mutating shared state
     }
 
     /// Stop tracking window events
@@ -130,9 +145,81 @@ class WindowTracker: @unchecked Sendable {
         }
 
         // Clear the cached windows list
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
         self.windows.removeAll()
 
         self.logger.debug("All window tracking services stopped")
+    }
+
+    // MARK: - Locked State Operations
+
+    /// Check if window should be tracked (not already tracked)
+    /// Returns true if window is new and should be registered
+    private func shouldTrackWindow(_ windowID: CGWindowID) -> Bool {
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
+        return !self.trackedWindowIDs.contains(windowID)
+    }
+
+    /// Register a new window in tracking state
+    /// Caller must verify window is not already tracked
+    private func registerWindow(_ element: AXUIElement, windowID: CGWindowID) {
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
+        self.windows.append(element)
+        self.trackedWindowIDs.insert(windowID)
+    }
+
+    /// Unregister a window from tracking state
+    /// Returns true if window was found and removed, false otherwise
+    private func unregisterWindow(_ element: AXUIElement) -> Bool {
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
+
+        // Try to find by reference first
+        if let index = self.windows.firstIndex(where: { $0 == element }) {
+            let window = self.windows[index]
+            if let windowID = self.windowProvider.getWindowID(for: window) {
+                self.trackedWindowIDs.remove(windowID)
+            }
+            self.windows.remove(at: index)
+            return true
+        }
+
+        // Fallback: try by ID matching
+        if let windowID = self.windowProvider.getWindowID(for: element) {
+            self.trackedWindowIDs.remove(windowID)
+            self.windows.removeAll { window in
+                if let wID = self.windowProvider.getWindowID(for: window), wID == windowID {
+                    return true
+                }
+                return false
+            }
+            return true
+        }
+
+        // Last resort: reference comparison
+        if let index = self.windows.firstIndex(where: { $0 == element }) {
+            self.windows.remove(at: index)
+            return true
+        }
+
+        return false
+    }
+
+    /// Check if a window is currently tracked
+    private func isWindowTracked(_ element: AXUIElement) -> Bool {
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
+        return self.windows.contains(where: { $0 == element })
+    }
+
+    /// Get current window count
+    private func getWindowCount() -> Int {
+        trackerLock.lock()
+        defer { trackerLock.unlock() }
+        return self.windows.count
     }
 
     // MARK: - Event Handlers
@@ -146,17 +233,16 @@ class WindowTracker: @unchecked Sendable {
             return
         }
 
-        // Check if already tracked by stable ID (deduplication for observer + polling)
-        guard !self.trackedWindowIDs.contains(windowID) else {
+        // Check if already tracked (lock-free check)
+        guard shouldTrackWindow(windowID) else {
             self.logger.debug("Window already tracked by ID: \(windowID)")
             return
         }
 
-        // Add to windows list and tracked IDs
-        self.windows.append(element)
-        self.trackedWindowIDs.insert(windowID)
+        // Register window (narrow critical section)
+        registerWindow(element, windowID: windowID)
 
-        // Emit callback to subscribers
+        // Emit callback to subscribers (no lock held)
         self.onWindowOpened?(element)
     }
 
@@ -165,45 +251,17 @@ class WindowTracker: @unchecked Sendable {
     private func handleWindowClosed(_ element: AXUIElement) {
         self.logger.debug("Window closed event received")
 
-        // Strategy: try to find the window by reference first (most reliable)
-        // because the AXUIElement becomes invalid after closing
-        if let index = self.windows.firstIndex(where: { $0 == element }) {
-            let closedWindow = self.windows[index]
-
-            // Get the window ID before removing (query while element still has some validity)
-            if let windowID = self.windowProvider.getWindowID(for: closedWindow) {
-                self.trackedWindowIDs.remove(windowID)
-            }
-
-            // Remove from windows list
-            self.windows.remove(at: index)
-
-            // Emit callback to subscribers
-            self.onWindowClosed?(element)
-            self.logger.debug("Window removed from tracker, total windows: \(self.windows.count)")
+        // Unregister from tracking state (narrow critical section)
+        guard unregisterWindow(element) else {
+            self.logger.debug("Window not found in tracker")
             return
         }
 
-        // Fallback: window not found by reference
-        // Try to identify by getting ID from the closed element and matching in our list
-        if let windowID = self.windowProvider.getWindowID(for: element) {
-            self.trackedWindowIDs.remove(windowID)
+        let windowCount = getWindowCount()
 
-            // Try to find and remove by ID comparison
-            self.windows.removeAll { window in
-                if let wID = self.windowProvider.getWindowID(for: window), wID == windowID {
-                    return true
-                }
-                return false
-            }
-        } else {
-            // Last resort: just try reference comparison for removal
-            self.windows.removeAll { $0 == element }
-        }
-
-        // Emit callback to subscribers
+        // Emit callback to subscribers (no lock held)
         self.onWindowClosed?(element)
-        self.logger.debug("Window removed from tracker, total windows: \(self.windows.count)")
+        self.logger.debug("Window removed from tracker, total windows: \(windowCount)")
     }
 
     /// Handle a window focus change event from observer or polling service
@@ -211,13 +269,13 @@ class WindowTracker: @unchecked Sendable {
     private func handleWindowFocused(_ element: AXUIElement) {
         self.logger.debug("Window focused event received")
 
-        // Verify the window is tracked (safety check)
-        guard self.windows.contains(where: { $0 == element }) else {
+        // Verify the window is tracked (safety check, narrow critical section)
+        guard isWindowTracked(element) else {
             self.logger.warning("Focused window is not in tracked windows list")
             return
         }
 
-        // Emit callback to subscribers
+        // Emit callback to subscribers (no lock held)
         self.onWindowFocused?(element)
 
         self.logger.debug("Window focus callback emitted")
@@ -254,7 +312,7 @@ class WindowTracker: @unchecked Sendable {
                     }
                 }
 
-                // Track windows by stable ID
+                // Track windows by stable ID (lock held by caller)
                 for window in onCurrentDesktop {
                     if let windowID = self.windowProvider.getWindowID(for: window) {
                         self.trackedWindowIDs.insert(windowID)

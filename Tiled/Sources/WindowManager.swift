@@ -39,12 +39,12 @@ class WindowManager {
         // Start tracking to discover existing windows
         self.tracker.startTracking()
 
-        // Bootstrap phase: Synchronously discover and register existing windows
+        // Startup phase: Synchronously discover and register existing windows
         // Note: We use registerExistingWindow() here (direct registration) rather than enqueueCommand()
-        // because this is one-time startup discovery, not ongoing event handling. After this phase,
-        // new windows arrive via callbacks and are enqueued through the command queue.
-        // TODO: Consider unifying to always use enqueueCommand() if we need guaranteed serialization
-        // between bootstrap discovery and runtime events. Currently the risk window is negligible.
+        // because this is one-time discovery at initialization before callbacks are registered.
+        // New windows that arrive during normal operation are enqueued through the command queue.
+        // TODO: Consider unifying to always use enqueueCommand() if startup completeness becomes critical.
+        // Currently the timing window between discovery and callback registration is negligible.
         for window in self.tracker.getWindows() {
             let windowController = WindowController.fromElement(window)
             self.frameManager?.registerExistingWindow(windowController, element: window)
@@ -58,8 +58,8 @@ class WindowManager {
 
         self.rootFrame?.refreshOverlay()
 
-        // Runtime phase: New windows arrive via callbacks and are queued through command processor
-        // This ensures new windows are processed serially with frame operations
+        // Register callbacks for window lifecycle events
+        // New windows are enqueued as commands, ensuring atomic processing with frame operations
         tracker.onWindowOpened = { [weak self] element in
             let windowController = WindowController.fromElement(element)
             self?.frameManager?.enqueueCommand(.windowAppeared(windowController, element))
