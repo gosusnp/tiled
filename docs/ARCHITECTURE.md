@@ -16,11 +16,7 @@ Input Sources (Independent)
     FrameManager
   (Command Processor)
       ↓
-  validateAndRepairState()
-      ↓
-  executeCommand()
-      ↓
-  validateAndRepairState()
+  executeCommand() (serial, atomic)
       ↓
   FrameManager (canonical state)
     ├─ rootFrame
@@ -46,7 +42,7 @@ These run independently and never mutate state directly.
 
 ### Command Processor (FrameManager)
 
-Central hub that processes all commands sequentially on MainActor.
+Central hub that processes all commands sequentially on MainActor. Each command executes atomically—no interleaving, no race conditions.
 
 ```swift
 @MainActor
@@ -65,16 +61,15 @@ class FrameManager {
         isProcessing = true
         defer { isProcessing = false }
 
-        while let command = commandQueue.removeFirst() {
-            validateAndRepairState()
+        while !commandQueue.isEmpty {
+            let command = commandQueue.removeFirst()
             try? await executeCommand(command)
-            validateAndRepairState()
         }
     }
 }
 ```
 
-**Key:** One command at a time, validation before/after each.
+**Key:** One command at a time. Serial execution on MainActor eliminates all concurrent access to state.
 
 ### Frame Tree (FrameController)
 
@@ -100,21 +95,20 @@ Read-only access to FrameManager state. Never mutate.
 1. User presses Cmd+Shift+H
 2. HotkeyController detects, enqueues `FrameCommand.moveWindowLeft`
 3. Command processor dequeues command
-4. validateAndRepairState() ensures consistent state
-5. executeCommand(.moveWindowLeft) runs
+4. executeCommand(.moveWindowLeft) runs atomically:
    - Finds adjacent frame
    - Moves active window
    - Updates activeFrame
-6. validateAndRepairState() verifies result
-7. UI updates
+5. UI reads updated state and refreshes
 
 ### External Window Appears
 1. macOS creates window
-2. WindowObserver detects, enqueues `FrameCommand.externalWindowAppeared(window)`
+2. WindowPoller detects, enqueues `FrameCommand.addWindow(window)`
 3. Command processor dequeues command
-4. validateAndRepairState() ensures consistent state
-5. executeCommand(.externalWindowAppeared) wraps and assigns window
-6. validateAndRepairState() verifies result
+4. executeCommand(.addWindow) runs atomically:
+   - Wraps AXUIElement as WindowController
+   - Assigns to active frame
+   - Updates UI
 
 ---
 
@@ -123,11 +117,10 @@ Read-only access to FrameManager state. Never mutate.
 Only these operations mutate state:
 
 1. **Frame operations** (split, close, move windows)
-2. **Window assignment** (add window, handle external appearance)
+2. **Window assignment** (add window, remove window)
 3. **Navigation** (change active frame, cycle windows)
-4. **Repair operations** (in validateAndRepairState)
 
-All flow through command queue with before/after validation.
+All flow through command queue. Each command executes atomically with no interleaving.
 
 ---
 

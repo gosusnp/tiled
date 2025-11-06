@@ -7,7 +7,7 @@
 
 1. **All state changes through `enqueueCommand()`** - never direct mutation
 2. **Query methods are pure** - no side effects
-3. **Use precondition for binary tree invariants** - use throws for design decisions
+3. **Graceful error handling** - recover on failure, never crash on unexpected state
 
 ---
 
@@ -56,24 +56,40 @@ func moveWindow(...) {
 
 ---
 
-## Preconditions vs Errors
+## Error Handling: Graceful Recovery
 
-**Use precondition** for binary tree invariants that should never fail:
+Never use precondition for state validation. Even invariants can be violated in edge cases. Always provide graceful recovery.
+
+**Use throws** for design decisions and invalid operations:
 
 ```swift
-func closeFrame() throws -> FrameController {
-    precondition(parent.children.count == 2)  // Binary tree requirement
+func closeFrame() throws -> FrameController? {
+    guard let parent = parent else {
+        throw FrameControllerError.cannotCloseRootFrame  // Design decision
+    }
+
+    // Graceful recovery if tree is inconsistent
+    guard parent.children.count == 2 else {
+        logger.warning("Frame tree inconsistent, cannot close safely")
+        return nil  // Or attempt recovery
+    }
     // ...
 }
 ```
 
-**Use throws** for legitimately non-recoverable cases:
+**Use returns** for cases where operation is not possible:
 
 ```swift
-guard let parent = parent else {
-    throw FrameControllerError.cannotCloseRootFrame  // Design decision
+// Returns nil when window doesn't exist in frame
+func removeWindow(_ window: WindowControllerProtocol) -> Bool {
+    guard windowStack.remove(window) else {
+        return false  // Window wasn't here, that's fine
+    }
+    return true
 }
 ```
+
+**Never crash on unexpected state.** Log it, recover, and keep running.
 
 ---
 
@@ -96,28 +112,6 @@ func findOrCreateAdjacentFrame(...) -> FrameController {
         try? split(.vertical)  // Side effect!
     }
     return frame
-}
-```
-
----
-
-## Recovery (Edge Cases Only)
-
-validateAndRepairState() is the safety mechanism. Most code never references it.
-
-```swift
-private func validateAndRepairState() {
-    // Edge case: frame got orphaned somehow
-    if let active = activeFrame, !isFrameInTree(active) {
-        logger.error("activeFrame orphaned, recovering to root")
-        activeFrame = rootFrame
-    }
-
-    // Edge case: window closed outside our control
-    for frame in allFrames() {
-        let deadWindows = frame.windowStack.all.filter { !isWindowAlive($0) }
-        deadWindows.forEach { frame.removeWindow($0) }
-    }
 }
 ```
 
@@ -163,9 +157,6 @@ class FrameManager {
     // MARK: - Frame Operations
     func splitHorizontally() throws { ... }
     func splitVertically() throws { ... }
-
-    // MARK: - Validation
-    private func validateAndRepairState() { ... }
 }
 ```
 
@@ -191,7 +182,7 @@ isWindowAlive(_ window:) -> Bool
 | Do ✅ | Don't ❌ |
 |--------|----------|
 | Write clear, straightforward operations | Scatter defensive checks everywhere |
-| Use precondition for invariants | Check external state everywhere |
+| Recover gracefully on unexpected state | Crash with precondition failures |
 | Pure query methods | Queries with side effects |
 | Log decisions and changes | Log in loops or frequent paths |
 | All changes via enqueueCommand() | Direct mutation of state |

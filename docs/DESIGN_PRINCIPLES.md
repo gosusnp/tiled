@@ -29,57 +29,52 @@ class FrameManager {
 
 ---
 
-## 2. State Always Correct (With Fallback Recovery)
+## 2. Straightforward Operations
 
-Operations assume healthy state. If something breaks (crashes, external events), automatic repair brings state back to validity.
+Operations assume healthy state because the command queue prevents concurrent mutations.
 
-**Why:** Keeps business logic clear; system recovers gracefully from edge cases.
-
-```swift
-private func processQueue() async {
-    while let command = commandQueue.removeFirst() {
-        validateAndRepairState()    // Safety net
-        try? await executeCommand(command)
-        validateAndRepairState()    // Safety net
-    }
-}
-```
-
-**Normal operations:** Write straightforward code assuming things work.
+**Why:** Keeps business logic clear and simple. No defensive checks scattered throughout.
 
 ```swift
-// Normal: assume things work
+// Straightforward: queue ensures serialized execution
 func moveWindow(_ window: WindowController, toFrame target: FrameController) throws {
     guard removeWindow(window) else { return }
     try target.addWindow(window, shouldFocus: true)
 }
 ```
 
-**Recovery (edge cases only):**
-
-```swift
-private func validateAndRepairState() {
-    // Edge case: frame got orphaned
-    if let active = activeFrame, !isFrameInTree(active) {
-        activeFrame = rootFrame
-    }
-    // Edge case: window closed outside our control
-    for frame in allFrames() {
-        let deadWindows = frame.windowStack.all.filter { !isWindowAlive($0) }
-        deadWindows.forEach { frame.removeWindow($0) }
-    }
-}
-```
-
-Most code doesn't think about this. It's automatic fallback for crashes, external events, rare bugs.
+The command queue eliminates the need for defensive programming. Since all mutations are serialized on MainActor, state is always valid when an operation starts.
 
 ---
 
-## 3. Self-Healing Operations
+## 3. Graceful Error Handling
 
-When state is inconsistent, it's automatically repaired before cascading to other operations.
+When operations fail, recover gracefully rather than crashing. The app should always be in a valid state.
 
-**Why:** System survives crashes, external app behavior, unexpected macOS events.
+**Why:** Users shouldn't lose work. Transient errors (windows closing, AX API issues) are normal.
+
+```swift
+// Wrong: crash on unexpected state
+func closeFrame() {
+    precondition(parent.children.count == 2)  // Crashes if violated
+    // ...
+}
+
+// Right: recover gracefully
+func closeFrame() throws -> FrameController? {
+    guard parent?.children.count == 2 else {
+        logger.warning("Frame tree inconsistent, attempting recovery")
+        return attemptRecovery()
+    }
+    // ...
+}
+```
+
+**Strategies:**
+- Return nil/empty for optional results
+- Use throws for design decisions, not invariant violations
+- Clean up broken state (orphaned frames, dead windows) rather than crashing
+- Log what happened for debugging, but keep the app running
 
 ---
 
@@ -87,10 +82,10 @@ When state is inconsistent, it's automatically repaired before cascading to othe
 
 **Business Logic** (FrameController, FrameNavigationService)
 - Assume healthy state, write straightforward code
-- Rely on Self-Healing to simplify complex recovery
+- Serial queue ensures state is always valid
 
 **Command Processing** (FrameManager)
-- Command queue, processQueue loop
+- Command queue with serial processing
 - Separates concurrency control from business logic
 
 **System Integration** (HotkeyController, WindowObserver, WindowPoller)
@@ -148,7 +143,7 @@ func moveWindow(...) {
 | Principle | How | Why |
 |-----------|-----|-----|
 | **Single Entry** | All changes via `enqueueCommand()` | Predictable, serialized, auditable |
-| **Always Correct** | Validate before/after operations | Clear code, automatic recovery |
-| **Self-Healing** | Auto-repair inconsistencies | Survives crashes and external events |
+| **Straightforward Operations** | Queue ensures serialized execution | No concurrent mutations, clear code |
+| **Graceful Error Handling** | Recover on failure, never crash | Users keep working, logging for debugging |
 
-Normal operations are straightforward; edge cases are handled automatically.
+The command queue is the core solution. By serializing all state mutations on MainActor, we eliminate race conditions. When unexpected things happen (edge cases, transient errors), the system recovers gracefully and logs what happened.
