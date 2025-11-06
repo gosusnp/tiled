@@ -9,6 +9,7 @@ import ApplicationServices
 enum FrameControllerError: Error {
     case cannotCloseRootFrame
     case frameNotInParent
+    case cannotSplitNonLeafFrame
 }
 
 @MainActor
@@ -137,7 +138,9 @@ class FrameController {
     }
 
     func split(direction: Direction) throws -> FrameController {
-        precondition(self.children.isEmpty)
+        guard self.children.isEmpty else {
+            throw FrameControllerError.cannotSplitNonLeafFrame
+        }
 
         let (geo1, geo2) = direction == .Horizontal
             ? self.geometry.splitHorizontally()
@@ -181,13 +184,15 @@ class FrameController {
             throw FrameControllerError.frameNotInParent
         }
 
-        // In a binary tree, we always have exactly 2 children (from the split)
-        // So closing one child always means merging back to parent
-        precondition(parent.children.count == 2)
+        // In a binary tree, we should have exactly 2 children (from the split)
+        // If tree is inconsistent, recover by merging all children
+        if parent.children.count != 2 {
+            return recoverFromInconsistentTree(parent: parent)
+        }
 
         let sibling = parent.children[myIndex == 0 ? 1 : 0]
 
-        // Parent takes windows from both children
+        // Normal case: binary tree with 2 children
         try parent.takeWindowsFrom(self)
         try parent.takeWindowsFrom(sibling)
 
@@ -205,6 +210,45 @@ class FrameController {
         }
 
         // Refresh overlay
+        parent.refreshOverlay()
+
+        return parent
+    }
+
+    /// Recovery mechanism: when tree is inconsistent, consolidate all children's windows into parent
+    /// This ensures the tree returns to a valid state even if corruption occurred.
+    private func recoverFromInconsistentTree(parent: FrameController) -> FrameController? {
+        // Take windows from this frame (being closed)
+        do {
+            try parent.takeWindowsFrom(self)
+        } catch {
+            // If we can't even take windows, the tree is too corrupted to recover
+            return nil
+        }
+
+        // Take windows from all other children
+        for child in parent.children where child !== self {
+            do {
+                try parent.takeWindowsFrom(child)
+            } catch {
+                // Log but continue - we've at least saved some windows
+                continue
+            }
+        }
+
+        // Remove all children from parent (including self) and reset split state
+        // This properly closes all frames and returns tree to leaf state
+        parent.children.removeAll()
+        parent.splitDirection = nil
+
+        // Clear self's parent reference to fully detach
+        self.parent = nil
+
+        // Show parent frame and set as active
+        parent.frameWindow.show()
+        parent.setActive(true)
+
+        // Refresh to reflect consolidated state
         parent.refreshOverlay()
 
         return parent

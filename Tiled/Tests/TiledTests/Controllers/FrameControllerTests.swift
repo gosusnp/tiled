@@ -395,4 +395,46 @@ struct FrameControllerTests {
         // Active should shift to window2 in child1
         #expect(child1.activeWindow === window2)
     }
+
+    @Test("Recovery: closeFrame gracefully handles inconsistent tree with wrong number of children")
+    func testCloseFrameRecoveryWithInconsistentTree() throws {
+        let parent = FrameController(rect: testFrame, config: config)
+
+        // Create split - parent now has 2 children
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        // Add windows to children
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        try child1.windowStack.add(window1, shouldFocus: false)
+        try child2.windowStack.add(window2, shouldFocus: false)
+        try child2.windowStack.add(window3, shouldFocus: false)
+        window1.frame = child1
+        window2.frame = child2
+        window3.frame = child2
+
+        #expect(parent.children.count == 2)
+        #expect(child1.windowStack.count == 1)
+        #expect(child2.windowStack.count == 2)
+
+        // Manually corrupt the tree by adding a third child (simulates unexpected state)
+        let extraChild = FrameController(rect: testFrame, config: config)
+        extraChild.parent = parent
+        parent.children.append(extraChild)
+
+        #expect(parent.children.count == 3)  // Now inconsistent
+
+        // Close child1 - should gracefully recover
+        let result = try child1.closeFrame()
+
+        // Recovery should consolidate all windows into parent
+        #expect(result === parent)
+        #expect(parent.children.count == 0)
+        #expect(parent.splitDirection == nil)
+        // All windows should be in parent now
+        #expect(parent.windowStack.count == 3)
+    }
 }
