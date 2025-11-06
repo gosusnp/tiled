@@ -13,6 +13,9 @@ class FrameManager {
     private let navigationService: FrameNavigationService
     private let logger: Logger
 
+    // Window controller mapping
+    var windowControllerMap: [AXUIElement: WindowControllerProtocol] = [:]
+
     // Command queue infrastructure
     private var commandQueue: [FrameCommand] = []
     private var isProcessing = false
@@ -134,6 +137,14 @@ class FrameManager {
         frame.refreshOverlay()
     }
 
+    func registerExistingWindow(_ window: WindowControllerProtocol, element: AXUIElement) {
+        windowControllerMap[element] = window
+    }
+
+    func unregisterWindow(element: AXUIElement) {
+        windowControllerMap.removeValue(forKey: element)
+    }
+
     func nextWindow() {
         activeFrame?.nextWindow()
     }
@@ -183,6 +194,10 @@ class FrameManager {
             if let frame = window.frame {
                 updateActiveFrame(from: activeFrame ?? rootFrame, to: frame)
             }
+        case .windowAppeared(let window, let element):
+            handleWindowAppeared(window, element: element)
+        case .windowDisappeared(let element):
+            handleWindowDisappeared(element)
         }
     }
 
@@ -193,5 +208,54 @@ class FrameManager {
         new.setActive(true)
         activeFrame = new
         new.activeWindow?.raise()
+    }
+
+    // MARK: - Window Lifecycle Handlers
+
+    private func handleWindowAppeared(_ window: WindowControllerProtocol, element: AXUIElement) {
+        // Register in map
+        windowControllerMap[element] = window
+
+        // Assign to active frame
+        guard let frame = activeFrame else {
+            logger.warning("No active frame to assign window to")
+            windowControllerMap.removeValue(forKey: element)
+            return
+        }
+
+        do {
+            try frame.addWindow(window, shouldFocus: true)
+            frame.refreshOverlay()
+        } catch {
+            logger.warning("Failed to assign window: \(error)")
+            windowControllerMap.removeValue(forKey: element)
+        }
+    }
+
+    private func handleWindowDisappeared(_ element: AXUIElement) {
+        guard let windowController = windowControllerMap[element] else {
+            logger.debug("Window disappeared but not found in map")
+            return
+        }
+
+        guard let frame = windowController.frame else {
+            logger.debug("Window has no frame (floating window)")
+            windowControllerMap.removeValue(forKey: element)
+            return
+        }
+
+        let wasActive = frame.activeWindow === windowController
+
+        // Remove from frame
+        frame.removeWindow(windowController)
+        windowControllerMap.removeValue(forKey: element)
+        frame.refreshOverlay()
+
+        // Focus next window if this was active
+        if wasActive, let newActive = frame.activeWindow {
+            newActive.raise()
+        }
+
+        logger.debug("Window removed from frame")
     }
 }

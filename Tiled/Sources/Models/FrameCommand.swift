@@ -2,6 +2,7 @@
 // Copyright (c) 2025 Jimmy Ma
 
 import Foundation
+import ApplicationServices
 
 /// Commands that mutate frame state through the command queue.
 enum FrameCommand {
@@ -30,4 +31,8 @@ enum FrameCommand {
     case addWindow(WindowControllerProtocol)
     case removeWindow(WindowControllerProtocol)
     case focusWindow(WindowControllerProtocol)
+
+    // Window lifecycle events
+    case windowAppeared(WindowControllerProtocol, AXUIElement)
+    case windowDisappeared(AXUIElement)
 }

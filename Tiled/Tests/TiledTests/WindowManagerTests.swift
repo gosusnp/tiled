@@ -14,8 +14,8 @@ struct WindowManagerTests {
         self.logger = Logger()
     }
 
-    @Test("onWindowClosed removes window from map and frame")
-    func testOnWindowClosed() throws {
+    @Test("windowDisappeared removes window from map and frame")
+    func testWindowDisappeared() async throws {
         let windowManager = WindowManager(logger: logger)
         let config = ConfigController()
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
@@ -34,9 +34,9 @@ struct WindowManagerTests {
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
-        // Manually register windows like onWindowOpened would
-        windowManager.windowControllerMap[window1.window.element] = window1
-        windowManager.windowControllerMap[window2.window.element] = window2
+        // Manually register windows like lifecycle events would
+        frameManager.windowControllerMap[window1.window.element] = window1
+        frameManager.windowControllerMap[window2.window.element] = window2
 
         // Add windows to frame (bypassing AX calls)
         try frame.windowStack.add(window1, shouldFocus: false)
@@ -45,19 +45,21 @@ struct WindowManagerTests {
         window2.frame = frame
 
         #expect(frame.windowStack.count == 2)
-        #expect(windowManager.windowControllerMap.count == 2)
+        #expect(frameManager.windowControllerMap.count == 2)
 
-        // Close first window by calling onWindowClosed
-        windowManager.onWindowClosed(window1.window.element)
+        // Enqueue windowDisappeared command for window1
+        frameManager.enqueueCommand(.windowDisappeared(window1.window.element))
+        // Give command queue time to process
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Verify window1 is removed
-        #expect(windowManager.windowControllerMap[window1.window.element] == nil)
+        #expect(frameManager.windowControllerMap[window1.window.element] == nil)
         #expect(frame.windowStack.count == 1)
         #expect(frame.windowStack.activeWindow === window2)
     }
 
-    @Test("onWindowClosed focuses new active window when active window closes")
-    func testOnWindowClosedFocusesNext() throws {
+    @Test("windowDisappeared focuses new active window when active window closes")
+    func testWindowDisappearedFocusesNext() async throws {
         let windowManager = WindowManager(logger: logger)
         let config = ConfigController()
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
@@ -77,8 +79,8 @@ struct WindowManagerTests {
         let window2 = MockWindowController(title: "Window 2")
 
         // Register windows
-        windowManager.windowControllerMap[window1.window.element] = window1
-        windowManager.windowControllerMap[window2.window.element] = window2
+        frameManager.windowControllerMap[window1.window.element] = window1
+        frameManager.windowControllerMap[window2.window.element] = window2
 
         // Add windows to frame (bypassing AX calls)
         try frame.windowStack.add(window1, shouldFocus: false)
@@ -90,11 +92,13 @@ struct WindowManagerTests {
         frame.nextWindow()
         #expect(frame.activeWindow === window2)
 
-        // Close the active window
-        windowManager.onWindowClosed(window2.window.element)
+        // Close the active window by enqueuing command
+        frameManager.enqueueCommand(.windowDisappeared(window2.window.element))
+        // Give command queue time to process
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Verify window1 is now active
-        #expect(windowManager.windowControllerMap[window2.window.element] == nil)
+        #expect(frameManager.windowControllerMap[window2.window.element] == nil)
         #expect(frame.activeWindow === window1)
     }
 }

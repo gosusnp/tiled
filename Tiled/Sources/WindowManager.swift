@@ -12,9 +12,6 @@ class WindowManager {
     let logger: Logger
     let tracker: WindowTracker
 
-    // Map of AXUIElement to WindowController for quick lookup
-    var windowControllerMap: [AXUIElement: WindowControllerProtocol] = [:]
-
     // Computed properties that delegate to frameManager
     var activeFrame: FrameController? {
         frameManager?.activeFrame
@@ -42,27 +39,34 @@ class WindowManager {
         // Start tracking to discover existing windows
         self.tracker.startTracking()
 
-        // Manually add existing windows without focus
+        // Bootstrap phase: Synchronously discover and register existing windows
+        // Note: We use registerExistingWindow() here (direct registration) rather than enqueueCommand()
+        // because this is one-time startup discovery, not ongoing event handling. After this phase,
+        // new windows arrive via callbacks and are enqueued through the command queue.
+        // TODO: Consider unifying to always use enqueueCommand() if we need guaranteed serialization
+        // between bootstrap discovery and runtime events. Currently the risk window is negligible.
         for window in self.tracker.getWindows() {
             let windowController = WindowController.fromElement(window)
-            windowControllerMap[window] = windowController
+            self.frameManager?.registerExistingWindow(windowController, element: window)
             do {
                 try assignWindow(windowController, shouldFocus: false)
             } catch {
                 self.logger.warning("Failed to assign initial window: \(error)")
-                windowControllerMap.removeValue(forKey: window)
+                self.frameManager?.unregisterWindow(element: window)
             }
         }
 
         self.rootFrame?.refreshOverlay()
 
-        // Now register callback for new windows
+        // Runtime phase: New windows arrive via callbacks and are queued through command processor
+        // This ensures new windows are processed serially with frame operations
         tracker.onWindowOpened = { [weak self] element in
-            self?.onWindowOpened(element)
+            let windowController = WindowController.fromElement(element)
+            self?.frameManager?.enqueueCommand(.windowAppeared(windowController, element))
         }
 
         tracker.onWindowClosed = { [weak self] element in
-            self?.onWindowClosed(element)
+            self?.frameManager?.enqueueCommand(.windowDisappeared(element))
         }
     }
 
@@ -131,45 +135,6 @@ class WindowManager {
 
     func moveActiveWindowDown() throws {
         frameManager?.enqueueCommand(.moveWindowDown)
-    }
-
-    // MARK: - Window Event Handlers
-
-    private func onWindowOpened(_ element: AXUIElement) {
-        let window = WindowController.fromElement(element)
-        windowControllerMap[element] = window  // Register in map
-        do {
-            // Runtime windows (new windows created after initialization)
-            try assignWindow(window, shouldFocus: true)
-        } catch {
-            self.logger.warning("Failed to assign window: \(error)")
-            windowControllerMap.removeValue(forKey: element)
-        }
-    }
-
-    func onWindowClosed(_ element: AXUIElement) {
-        guard let windowController = windowControllerMap[element] else {
-            self.logger.warning("Closed window not found")
-            return
-        }
-
-        guard let frame = windowController.frame else {
-            self.logger.debug("Window has no frame (floating window)")
-            windowControllerMap.removeValue(forKey: element)
-            return
-        }
-
-        let wasActive = frame.activeWindow === windowController
-
-        frame.removeWindow(windowController)
-        windowControllerMap.removeValue(forKey: element)
-        frame.refreshOverlay()
-
-        if wasActive, let newActive = frame.activeWindow {
-            newActive.raise()
-        }
-
-        self.logger.debug("Window removed, total windows: \(self.tracker.getWindows().count)")
     }
 
     // MARK: - Layout
