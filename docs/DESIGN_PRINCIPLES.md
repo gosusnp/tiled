@@ -88,8 +88,15 @@ func closeFrame() throws -> FrameController? {
 - Command queue with serial processing
 - Separates concurrency control from business logic
 
-**System Integration** (HotkeyController, WindowObserver, WindowPoller)
-- Generate commands, don't execute directly
+**Window Identification** (WindowRegistry, WindowId)
+- Single source of truth for window identity
+- Bridges unstable AXUIElement (event) ↔ stable WindowId (identity)
+- Handles async discovery: creates partial WindowIds, completes them later
+- Maintains WindowId ↔ AXUIElement ↔ WindowController mappings
+
+**System Integration** (HotkeyController, WindowObserver, WindowPoller, WindowTracker)
+- Generate commands via WindowRegistry, don't execute directly
+- WindowTracker delegates to WindowRegistry for discovery
 - Independent from command processor
 
 **Display** (FrameWindowController, Views)
@@ -134,6 +141,40 @@ func moveWindow(...) {
     guard removeWindow(...) else { return }
     try addWindow(...)
 }
+```
+
+### ❌ Storing AXUIElement References
+```swift
+// Wrong: reference becomes stale
+class WindowController {
+    let element: AXUIElement  // Stale after next observer fire
+    func raise() {
+        AXUIElementPerformAction(element, kAXRaiseAction)  // May fail
+    }
+}
+
+// Right: use stable WindowId
+class WindowController {
+    let windowId: WindowId
+    func raise() throws {
+        guard let element = windowId.getCurrentElement() else {
+            throw WindowError.elementNotAvailable(windowId)
+        }
+        try AXUIElementPerformAction(element, kAXRaiseAction)
+    }
+}
+```
+
+### ❌ Using AXUIElement as Dictionary Key
+```swift
+// Wrong: same window produces different AXUIElement references
+var windows: [AXUIElement: WindowController] = [:]
+// Observer gives element1, later close event gives element2
+// Lookup fails: windows[element2] returns nil even though window exists
+
+// Right: use stable WindowId
+var windows: [WindowIdKey: WindowController] = [:]
+// WindowId.asKey() handles partial/complete transparently
 ```
 
 ---
