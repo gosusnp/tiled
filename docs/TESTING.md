@@ -126,6 +126,19 @@ struct IntegrationTests {
 }
 ```
 
+#### What Cannot Be Unit Tested: ObjectIdentifier() with AXUIElement
+
+**Problem**: AXUIElement is an Objective-C opaque type. On ARM64e (Apple Silicon), the CPU enforces pointer authentication—cryptographic signing that validates pointer integrity at runtime.
+
+Tests using `ObjectIdentifier(element)` for identity operations **crash with signal code 5** when given unsigned/forged pointers. These must be integration tests:
+
+- Window registration and deduplication (`registry.getOrRegister(element:)`)
+- Element identity lookup
+- WindowId retention by registry
+- Observer lifecycle management
+
+**Solution**: Use real AXUIElement instances from the macOS Accessibility API in integration tests.
+
 ---
 
 ## Common Patterns

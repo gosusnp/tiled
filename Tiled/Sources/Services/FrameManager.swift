@@ -56,6 +56,7 @@ class FrameManager {
         }
     }
 
+
     // MARK: - Frame Operations
 
     func splitHorizontally() throws {

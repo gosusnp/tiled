@@ -16,7 +16,13 @@ let package = Package(
         ),
         .testTarget(
             name: "TiledTests",
-            dependencies: ["Tiled"]
+            dependencies: ["Tiled"],
+            path: "Tests/TiledTests"
+        ),
+        .testTarget(
+            name: "TiledIntegrationTests",
+            dependencies: ["Tiled"],
+            path: "Tests/TiledIntegrationTests"
         ),
     ],
     swiftLanguageVersions: [.v6]

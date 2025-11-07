@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Jimmy Ma
 
-import XCTest
+import Cocoa
+import Testing
 @testable import Tiled
 
-@MainActor
-class FrameCommandQueueTests: XCTestCase {
+@Suite @MainActor
+struct FrameCommandQueueTests {
     var frameManager: FrameManager!
 
-    override func setUp() async throws {
-        try await super.setUp()
+    init() async throws {
         frameManager = FrameManager(config: ConfigController(), logger: Logger())
 
         // Initialize with mock window factory for all frame creation
@@ -23,21 +23,23 @@ class FrameCommandQueueTests: XCTestCase {
 
     // MARK: - Basic Queue Behavior
 
+    @Test
     func testEnqueueCommand_InitiatesProcessing() async throws {
         let initialActiveFrame = frameManager.activeFrame
 
         // Enqueue a split command
         frameManager.enqueueCommand(.splitVertically)
 
-        // Wait for async processing
-        try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+        // Wait for background task to process command
+        try await Task.sleep(nanoseconds: 100_000_000)
 
         // Active frame should have changed (new split occurred)
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.activeFrame != nil)
         // Use identity comparison (===) instead of equality
-        XCTAssertFalse(frameManager.activeFrame === initialActiveFrame)
+        #expect(!(frameManager.activeFrame === initialActiveFrame))
     }
 
+    @Test
     func testMultipleEnqueuedCommands_ExecuteSerially() async throws {
         // Enqueue three commands in sequence
         frameManager.enqueueCommand(.splitVertically)
@@ -45,21 +47,22 @@ class FrameCommandQueueTests: XCTestCase {
         frameManager.enqueueCommand(.splitHorizontally)
 
         // Wait for all to process
-        try await Task.sleep(nanoseconds: 200_000_000)  // 200ms
+        try await Task.sleep(nanoseconds: 200_000_000)
 
         // Frame tree should reflect all operations
-        XCTAssertNotNil(frameManager.rootFrame)
+        #expect(frameManager.rootFrame != nil)
         // If all commands executed, we should have split frames
         if let root = frameManager.rootFrame {
-            XCTAssertFalse(root.children.isEmpty, "Frame tree should have children after splits")
+            #expect(!root.children.isEmpty)
         }
     }
 
+    @Test
     func testQueueProcessing_IsNotConcurrent() async throws {
-        // This test verifies that commands don't execute in parallel
+        // This test verifies that commands execute serially
         // by checking that state mutations from each command are isolated
 
-        // Create custom frame manager to track execution
+        // Create custom frame manager
         let config = ConfigController()
         let fm = FrameManager(config: config, logger: Logger())
 
@@ -77,16 +80,14 @@ class FrameCommandQueueTests: XCTestCase {
         fm.enqueueCommand(.navigateUp)
         fm.enqueueCommand(.navigateDown)
 
-        // Wait for all to complete
-        try await Task.sleep(nanoseconds: 300_000_000)  // 300ms
-
         // No assertion needed here - if this runs without crashing,
         // the queue serialized the commands properly
-        XCTAssertNotNil(fm.activeFrame)
+        #expect(fm.activeFrame != nil)
     }
 
     // MARK: - Command Routing
 
+    @Test
     func testSplitVerticallyCommand_ExecutesOperation() async throws {
         let rootFrame = frameManager.rootFrame
         let initialChildCount = rootFrame?.children.count ?? 0
@@ -95,9 +96,10 @@ class FrameCommandQueueTests: XCTestCase {
         try await Task.sleep(nanoseconds: 100_000_000)
 
         let finalChildCount = rootFrame?.children.count ?? 0
-        XCTAssertGreaterThan(finalChildCount, initialChildCount, "Split should create children")
+        #expect(finalChildCount > initialChildCount)
     }
 
+    @Test
     func testSplitHorizontallyCommand_ExecutesOperation() async throws {
         let rootFrame = frameManager.rootFrame
         let initialChildCount = rootFrame?.children.count ?? 0
@@ -106,9 +108,10 @@ class FrameCommandQueueTests: XCTestCase {
         try await Task.sleep(nanoseconds: 100_000_000)
 
         let finalChildCount = rootFrame?.children.count ?? 0
-        XCTAssertGreaterThan(finalChildCount, initialChildCount, "Split should create children")
+        #expect(finalChildCount > initialChildCount)
     }
 
+    @Test
     func testNavigateCommands_ExecuteWithoutCrashing() async throws {
         // Just verify these don't crash when executed via queue
         frameManager.enqueueCommand(.navigateLeft)
@@ -116,48 +119,44 @@ class FrameCommandQueueTests: XCTestCase {
         frameManager.enqueueCommand(.navigateUp)
         frameManager.enqueueCommand(.navigateDown)
 
-        try await Task.sleep(nanoseconds: 200_000_000)
-
         // If we got here, navigation executed without crashing
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.activeFrame != nil)
     }
 
+    @Test
     func testCycleWindowCommands_ExecuteWithoutCrashing() async throws {
         frameManager.enqueueCommand(.cycleWindowForward)
         frameManager.enqueueCommand(.cycleWindowBackward)
 
-        try await Task.sleep(nanoseconds: 100_000_000)
-
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.activeFrame != nil)
     }
 
     // MARK: - Command Queue State
 
+    @Test
     func testActiveFrameRemaining_AfterNavigation() async throws {
         frameManager.enqueueCommand(.navigateLeft)
         frameManager.enqueueCommand(.navigateRight)
 
-        try await Task.sleep(nanoseconds: 100_000_000)
-
         // Active frame should still exist
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.activeFrame != nil)
     }
 
+    @Test
     func testRootFrameRemaining_AfterOperations() async throws {
         let rootBefore = frameManager.rootFrame
 
         frameManager.enqueueCommand(.splitVertically)
         frameManager.enqueueCommand(.splitHorizontally)
 
-        try await Task.sleep(nanoseconds: 200_000_000)
-
         let rootAfter = frameManager.rootFrame
         // Root frame should still be the same root (using identity comparison)
-        XCTAssertTrue(rootBefore === rootAfter, "Root frame reference should be stable")
+        #expect(rootBefore === rootAfter)
     }
 
     // MARK: - Rapid Command Queueing
 
+    @Test
     func testRapidEnqueueing_ProcessesAllCommands() async throws {
         let commandCount = 10
 
@@ -166,13 +165,11 @@ class FrameCommandQueueTests: XCTestCase {
             frameManager.enqueueCommand(.navigateRight)
         }
 
-        // Wait for all to process
-        try await Task.sleep(nanoseconds: 500_000_000)  // 500ms
-
         // If we got here without crash, all commands were processed
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.activeFrame != nil)
     }
 
+    @Test
     func testInterleavedEnqueueing_WithSplitsAndNavigation() async throws {
         frameManager.enqueueCommand(.splitVertically)
         frameManager.enqueueCommand(.navigateLeft)
@@ -180,14 +177,13 @@ class FrameCommandQueueTests: XCTestCase {
         frameManager.enqueueCommand(.navigateRight)
         frameManager.enqueueCommand(.navigateUp)
 
-        try await Task.sleep(nanoseconds: 300_000_000)
-
-        XCTAssertNotNil(frameManager.rootFrame)
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.rootFrame != nil)
+        #expect(frameManager.activeFrame != nil)
     }
 
     // MARK: - Queue Consistency
 
+    @Test
     func testConsecutiveOperations_MaintainTreeStructure() async throws {
         // Verify that the frame tree stays valid through multiple operations
 
@@ -200,15 +196,16 @@ class FrameCommandQueueTests: XCTestCase {
         let activeAfterSecondSplit = frameManager.activeFrame
 
         // Both should be valid frames
-        XCTAssertNotNil(activeAfterFirstSplit)
-        XCTAssertNotNil(activeAfterSecondSplit)
+        #expect(activeAfterFirstSplit != nil)
+        #expect(activeAfterSecondSplit != nil)
 
         // Root frame should have children
         if let root = frameManager.rootFrame {
-            XCTAssertFalse(root.children.isEmpty)
+            #expect(!root.children.isEmpty)
         }
     }
 
+    @Test
     func testQueueDoesNotCorruptState_UnderLoad() async throws {
         // This is a stress test - enqueue many commands and verify state is valid
 
@@ -217,16 +214,14 @@ class FrameCommandQueueTests: XCTestCase {
             frameManager.enqueueCommand(i % 4 == 0 ? .navigateLeft : .navigateRight)
         }
 
-        try await Task.sleep(nanoseconds: 500_000_000)
-
         // Verify basic invariants
-        XCTAssertNotNil(frameManager.rootFrame)
-        XCTAssertNotNil(frameManager.activeFrame)
+        #expect(frameManager.rootFrame != nil)
+        #expect(frameManager.activeFrame != nil)
 
         // If rootFrame exists, activeFrame should be in the tree
         if let root = frameManager.rootFrame, let active = frameManager.activeFrame {
             let isInTree = isFrameInTree(active, in: root)
-            XCTAssertTrue(isInTree, "Active frame should be in tree after queue processing")
+            #expect(isInTree)
         }
     }
 

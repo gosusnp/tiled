@@ -9,3 +9,9 @@ run:
 
 test:
 	swift test
+
+test-integration:
+	swift test --filter "TiledIntegrationTests"
+
+test-unit:
+	swift test --filter "TiledTests"
