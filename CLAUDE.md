@@ -40,6 +40,8 @@ From `docs/TESTING.md`: Unit (mocks), command, integration (real AX).
 
 Use dependency injection. Test behavior, not implementation.
 
+**TDD approach**: Write tests first, make them pass, small incremental changes.
+
 ---
 
 ## When Writing
@@ -48,3 +50,12 @@ Use dependency injection. Test behavior, not implementation.
 2. Be explicit when user wants detail - they'll ask
 3. Default to quick reference style
 4. Match docs' conciseness level
+
+---
+
+## Development Process
+
+- **Check in when uncertain** - Ask for clarification rather than assume
+- **Root cause analysis** - Analyze changes and test failures systematically
+  - Suspect own code before environment issues
+  - Debug failures rather than blame caching first
