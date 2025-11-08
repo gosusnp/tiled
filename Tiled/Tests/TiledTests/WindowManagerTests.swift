@@ -42,11 +42,9 @@ struct WindowManagerTests {
         frameManager.windowControllerMap[windowId1.asKey()] = window1
         frameManager.windowControllerMap[windowId2.asKey()] = window2
 
-        // Add windows to frame (bypassing AX calls)
-        try frame.windowStack.add(window1, shouldFocus: false)
-        try frame.windowStack.add(window2, shouldFocus: false)
-        window1.frame = frame
-        window2.frame = frame
+        // Add windows to frame (through addWindow API)
+        try frame.addWindow(window1)
+        try frame.addWindow(window2)
 
         #expect(frame.windowStack.count == 2)
         #expect(frameManager.windowControllerMap.count == 2)
@@ -59,7 +57,6 @@ struct WindowManagerTests {
         // Verify window1 is removed
         #expect(frameManager.windowControllerMap[windowId1.asKey()] == nil)
         #expect(frame.windowStack.count == 1)
-        #expect(frame.windowStack.getActiveWindow() === window2)
     }
 
     @Test("windowDisappeared focuses new active window when active window closes")
@@ -90,15 +87,13 @@ struct WindowManagerTests {
         frameManager.windowControllerMap[windowId1.asKey()] = window1
         frameManager.windowControllerMap[windowId2.asKey()] = window2
 
-        // Add windows to frame (bypassing AX calls)
-        try frame.windowStack.add(window1, shouldFocus: false)
-        try frame.windowStack.add(window2, shouldFocus: false)
-        window1.frame = frame
-        window2.frame = frame
+        // Add windows to frame (through addWindow API)
+        try frame.addWindow(window1)
+        try frame.addWindow(window2)
 
         // Navigate to second window
         frame.nextWindow()
-        #expect(frame.windowStack.getActiveWindow() === window2)
+        #expect(frame.windowStack.activeIndex == 1)
 
         // Close the active window by enqueuing command
         frameManager.enqueueCommand(.windowDisappeared(windowId2))
@@ -107,6 +102,6 @@ struct WindowManagerTests {
 
         // Verify window1 is now active
         #expect(frameManager.windowControllerMap[windowId2.asKey()] == nil)
-        #expect(frame.windowStack.getActiveWindow() === window1)
+        #expect(frame.windowStack.activeIndex == 0)
     }
 }

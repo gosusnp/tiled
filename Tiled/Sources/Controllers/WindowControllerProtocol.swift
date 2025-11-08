@@ -7,6 +7,7 @@ import Cocoa
 /// This allows for testing with mocks that don't actually move real windows.
 protocol WindowControllerProtocol: AnyObject {
     var window: WindowModel? { get }
+    var windowId: WindowId? { get }
     var frame: FrameController? { get set }
     var appName: String { get }
     var title: String { get }

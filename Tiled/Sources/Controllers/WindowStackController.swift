@@ -13,7 +13,7 @@ import Cocoa
 @MainActor
 class WindowStackController {
     private let styleProvider: StyleProvider
-    private var windows: [WindowControllerProtocol] = []
+    private var windowIds: [WindowId] = []
     private(set) var activeIndex: Int = 0
 
     init(styleProvider: StyleProvider) {
@@ -22,60 +22,54 @@ class WindowStackController {
 
     // Safe getters
     var count: Int {
-        windows.count
+        windowIds.count
     }
 
-    var all: [WindowControllerProtocol] {
-        windows
+    var allWindowIds: [WindowId] {
+        windowIds
     }
 
-    var tabs: [WindowTab] {
-        self.all.enumerated().map { (index, window) in
-            let isActive = index == self.activeIndex
-            return WindowTab(
-                title: window.title,
-                isActive: isActive,
-            )
-        }
+    var tabs: [WindowId] {
+        windowIds
     }
 
-    // Private accessor for active window
-    private var activeWindow: WindowControllerProtocol? {
-        guard !windows.isEmpty && activeIndex < windows.count else { return nil }
-        return windows[activeIndex]
+    // Private accessor for active window ID
+    private var activeWindowId: WindowId? {
+        guard !windowIds.isEmpty && activeIndex < windowIds.count else { return nil }
+        return windowIds[activeIndex]
     }
 
     // Query methods for active window
-    func isActiveWindow(_ window: WindowControllerProtocol) -> Bool {
-        guard !windows.isEmpty && activeIndex < windows.count else { return false }
-        return windows[activeIndex] === window
+    func isActiveWindow(_ windowId: WindowId) -> Bool {
+        guard !windowIds.isEmpty && activeIndex < windowIds.count else { return false }
+        return windowIds[activeIndex] == windowId
     }
 
-    func getActiveWindow() -> WindowControllerProtocol? {
-        return activeWindow
+    func getActiveWindowId() -> WindowId? {
+        return activeWindowId
     }
 
     // Window management
-    func add(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
+    func add(_ windowId: WindowId, shouldFocus: Bool = false) throws {
         // Validate no duplicates
-        guard !windows.contains(where: { $0 === window }) else {
+        guard !windowIds.contains(where: { $0 == windowId }) else {
             throw WindowStackError.duplicateWindow
         }
-        windows.append(window)
+        windowIds.append(windowId)
         if shouldFocus {
-            activeIndex = windows.count - 1  // Make new window active
+            activeIndex = windowIds.count - 1  // Make new window active
         }
     }
 
-    func remove(_ window: WindowControllerProtocol) -> Bool {
-        guard let index = windows.firstIndex(where: { $0 === window }) else {
+    func remove(_ windowId: WindowId) -> Bool {
+        guard let index = windowIds.firstIndex(where: { $0 == windowId }) else {
             return false
         }
-        windows.remove(at: index)
+        windowIds.remove(at: index)
 
         // Update activeIndex if needed
-        if activeIndex >= windows.count && !windows.isEmpty {
-            activeIndex = windows.count - 1
+        if activeIndex >= windowIds.count && !windowIds.isEmpty {
+            activeIndex = windowIds.count - 1
         } else if activeIndex > index {
             activeIndex -= 1
         }
@@ -83,24 +77,22 @@ class WindowStackController {
     }
 
     func takeAll(from other: WindowStackController) throws {
-        for window in other.all {
-            try self.add(window)
+        for windowId in other.allWindowIds {
+            try self.add(windowId)
         }
-        other.windows = []
+        other.windowIds = []
         other.activeIndex = 0
     }
 
     // Window cycling
     func nextWindow() {
-        guard !windows.isEmpty else { return }
-        activeIndex = (activeIndex + 1) % windows.count
-        activeWindow?.raise()
+        guard !windowIds.isEmpty else { return }
+        activeIndex = (activeIndex + 1) % windowIds.count
     }
 
     func previousWindow() {
-        guard !windows.isEmpty else { return }
-        activeIndex = activeIndex == 0 ? windows.count - 1 : activeIndex - 1
-        activeWindow?.raise()
+        guard !windowIds.isEmpty else { return }
+        activeIndex = activeIndex == 0 ? windowIds.count - 1 : activeIndex - 1
     }
 }
 

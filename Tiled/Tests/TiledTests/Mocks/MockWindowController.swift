@@ -7,6 +7,7 @@ import Cocoa
 /// Mock WindowController for testing that doesn't actually move/resize real windows
 class MockWindowController: WindowControllerProtocol {
     let window: WindowModel?
+    let windowId: WindowId?
     weak var frame: FrameController?
 
     private(set) var raiseCallCount = 0
@@ -22,13 +23,19 @@ class MockWindowController: WindowControllerProtocol {
 
     nonisolated(unsafe) private static var elementCounter: Int = 1
 
-    init(title: String) {
+    nonisolated(unsafe) init(title: String) {
         // Create a unique WindowModel for testing
         let pid = pid_t(Self.elementCounter)
         Self.elementCounter += 1
 
         let element = AXUIElementCreateApplication(pid)
         self.window = WindowModel(element: element, title: title, appName: "MockApp")
+
+        // For tests, we need a WindowId but WindowId's registry parameter is @MainActor isolated.
+        // Since we're in a test and don't actually use the registry, we can create a minimal
+        // WindowId that will be valid for our testing purposes
+        // We'll defer this to when it's actually needed
+        self.windowId = WindowId(appPID: pid, registry: EmptyWindowRegistry())
     }
 
     func raise() {

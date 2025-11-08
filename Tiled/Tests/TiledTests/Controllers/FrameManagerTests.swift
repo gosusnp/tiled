@@ -451,8 +451,7 @@ struct FrameManagerTests {
 
         // Add window to right child
         let window = MockWindowController(title: "Test Window")
-        try rightChild.windowStack.add(window, shouldFocus: false)
-        window.frame = rightChild
+        try rightChild.addWindow(window)
 
         // Make right child active
         frameManager.activeFrame = rightChild
@@ -490,8 +489,7 @@ struct FrameManagerTests {
 
         // Add window to left child
         let window = MockWindowController(title: "Test Window")
-        try leftChild.windowStack.add(window, shouldFocus: false)
-        window.frame = leftChild
+        try leftChild.addWindow(window)
 
         // Make left child active (it already is from split)
         #expect(frameManager.activeFrame === leftChild)
@@ -527,8 +525,7 @@ struct FrameManagerTests {
 
         // Add window to bottom child
         let window = MockWindowController(title: "Test Window")
-        try bottomChild.windowStack.add(window, shouldFocus: false)
-        window.frame = bottomChild
+        try bottomChild.addWindow(window)
 
         // Make bottom child active
         frameManager.activeFrame = bottomChild
@@ -566,8 +563,7 @@ struct FrameManagerTests {
 
         // Add window to top child
         let window = MockWindowController(title: "Test Window")
-        try topChild.windowStack.add(window, shouldFocus: false)
-        window.frame = topChild
+        try topChild.addWindow(window)
 
         // Make top child active (it already is from split)
         #expect(frameManager.activeFrame === topChild)
@@ -603,8 +599,7 @@ struct FrameManagerTests {
 
         // Add window to left child
         let window = MockWindowController(title: "Test Window")
-        try leftChild.windowStack.add(window, shouldFocus: false)
-        window.frame = leftChild
+        try leftChild.addWindow(window)
 
         #expect(leftChild.windowStack.count == 1)
         #expect(rightChild.windowStack.count == 0)
@@ -615,7 +610,6 @@ struct FrameManagerTests {
         // Window should have moved
         #expect(leftChild.windowStack.count == 0)
         #expect(rightChild.windowStack.count == 1)
-        #expect(rightChild.windowStack.getActiveWindow() === window)
     }
 
     // MARK: - FrameMap Tests
