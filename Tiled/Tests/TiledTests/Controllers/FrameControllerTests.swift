@@ -26,7 +26,7 @@ struct FrameControllerTests {
         #expect(frameController.windowStack.activeWindow == nil)
     }
 
-    @Test("nextWindow delegates to windowStack")
+    @Test("nextWindow delegates to windowStack and calls raise")
     func testNextWindow() throws {
         let frameController = FrameController(rect: testFrame, config: config)
 
@@ -36,16 +36,17 @@ struct FrameControllerTests {
         try frameController.windowStack.add(window1)
         try frameController.windowStack.add(window2)
 
+        // Before cycling, window1 is active
         #expect(frameController.windowStack.activeWindow === window1)
+        #expect(!window1.raiseWasCalled)
 
+        // After nextWindow, window2 should be active and raised
         frameController.nextWindow()
         #expect(frameController.windowStack.activeWindow === window2)
-
-        frameController.nextWindow()
-        #expect(frameController.windowStack.activeWindow === window1)
+        #expect(window2.raiseWasCalled)
     }
 
-    @Test("previousWindow delegates to windowStack")
+    @Test("previousWindow delegates to windowStack and calls raise")
     func testPreviousWindow() throws {
         let frameController = FrameController(rect: testFrame, config: config)
 
@@ -55,13 +56,16 @@ struct FrameControllerTests {
         try frameController.windowStack.add(window1)
         try frameController.windowStack.add(window2)
 
-        #expect(frameController.windowStack.activeWindow === window1)
-
+        // Start at window1, cycle back to window2
         frameController.previousWindow()
         #expect(frameController.windowStack.activeWindow === window2)
+        #expect(window2.raiseWasCalled)
 
+        // Reset mock state and cycle back to window1
+        window2.resetMockState()
         frameController.previousWindow()
         #expect(frameController.windowStack.activeWindow === window1)
+        #expect(window1.raiseWasCalled)
     }
 
     @Test("Split creates child frames")
@@ -78,12 +82,13 @@ struct FrameControllerTests {
         #expect(newActiveFrame === frameController.children[0])
     }
 
-    @Test("activeWindow reflects windowStack state")
-    func testActiveWindowDelegation() {
+    @Test("nextWindow does nothing on empty stack")
+    func testNextWindowOnEmpty() {
         let frameController = FrameController(rect: testFrame, config: config)
 
+        // Should not crash when calling nextWindow on empty frame
+        frameController.nextWindow()
         #expect(frameController.windowStack.activeWindow == nil)
-        #expect(frameController.windowStack.activeWindow === frameController.windowStack.activeWindow)
     }
 
     @Test("Frame reference is set when window is added")

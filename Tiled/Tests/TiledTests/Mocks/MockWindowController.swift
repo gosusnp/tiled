@@ -45,4 +45,14 @@ class MockWindowController: WindowControllerProtocol {
         resizeCallCount += 1
         // No-op: don't actually resize windows in tests
     }
+
+    var raiseWasCalled: Bool {
+        raiseCallCount > 0
+    }
+
+    func resetMockState() {
+        raiseCallCount = 0
+        moveCallCount = 0
+        resizeCallCount = 0
+    }
 }
