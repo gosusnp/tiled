@@ -23,6 +23,15 @@ class MockAccessibilityAPIHelper: AccessibilityAPIHelper {
         // For tests, all elements are considered valid by default
         return true
     }
+
+    func move(_ element: AXUIElement, to: CGPoint) throws {
+    }
+
+    func raise(_ element: AXUIElement) {
+    }
+
+    func resize(_ element: AXUIElement, size: CGSize) throws {
+    }
 }
 
 // MARK: - Mock AXUIElement

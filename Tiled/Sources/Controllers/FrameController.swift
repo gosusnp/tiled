@@ -84,12 +84,8 @@ class FrameController {
     }
 
     func addWindow(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
-        window.frame = self  // Set the frame reference
-
         // Get WindowId from the window controller
-        guard let windowId = window.windowId else {
-            throw FrameControllerError.cannotAddWindowWithoutId
-        }
+        let windowId = window.windowId
 
         try self.windowStack.add(windowId, shouldFocus: shouldFocus)
         self.windowMap[windowId] = window
@@ -101,13 +97,10 @@ class FrameController {
     }
 
     func removeWindow(_ window: WindowControllerProtocol) -> Bool {
-        guard let windowId = window.windowId else {
-            return false
-        }
+        let windowId = window.windowId
 
         let removed = self.windowStack.remove(windowId)
         if removed {
-            window.frame = nil  // Clear the frame reference
             self.windowMap.removeValue(forKey: windowId)
         }
         return removed
@@ -139,9 +132,7 @@ class FrameController {
 
     /// Check if a specific window is the active window in this frame
     func isActiveWindow(_ window: WindowControllerProtocol) -> Bool {
-        guard let windowId = window.windowId else {
-            return false
-        }
+        let windowId = window.windowId
         return self.windowStack.isActiveWindow(windowId)
     }
 
@@ -155,6 +146,7 @@ class FrameController {
 
     /// Raise the active window in this frame
     func raiseActiveWindow() {
+        // TODO looks like we're no longer doing anything here
         guard let activeWindowId = self.windowStack.getActiveWindowId() else {
             self.refreshOverlay()
             return

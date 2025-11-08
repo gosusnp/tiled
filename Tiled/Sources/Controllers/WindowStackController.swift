@@ -68,9 +68,7 @@ class WindowStackController {
         windowIds.remove(at: index)
 
         // Update activeIndex if needed
-        if activeIndex >= windowIds.count && !windowIds.isEmpty {
-            activeIndex = windowIds.count - 1
-        } else if activeIndex > index {
+        if activeIndex >= index && activeIndex > 0 {
             activeIndex -= 1
         }
         return true

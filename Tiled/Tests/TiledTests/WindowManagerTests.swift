@@ -31,31 +31,30 @@ struct WindowManagerTests {
             return
         }
 
-        let window1 = MockWindowController(title: "Window 1")
-        let window2 = MockWindowController(title: "Window 2")
-
         // Create WindowIds for test windows
         let windowId1 = WindowId(appPID: 1234, registry: windowManager.registry)
+        let window1 = MockWindowController(windowId: windowId1)
         let windowId2 = WindowId(appPID: 1235, registry: windowManager.registry)
+        let window2 = MockWindowController(windowId: windowId2)
 
-        // Manually register windows like lifecycle events would
+        // TODO This shouldn't be called manually
         frameManager.windowControllerMap[windowId1.asKey()] = window1
         frameManager.windowControllerMap[windowId2.asKey()] = window2
 
         // Add windows to frame (through addWindow API)
-        try frame.addWindow(window1)
-        try frame.addWindow(window2)
+        try frameManager.assignWindow(window1)
+        try frameManager.assignWindow(window2)
 
         #expect(frame.windowStack.count == 2)
         #expect(frameManager.windowControllerMap.count == 2)
 
         // Enqueue windowDisappeared command for window1
-        frameManager.enqueueCommand(.windowDisappeared(windowId1))
+        frameManager.enqueueCommand(.windowDisappeared(windowId2))
         // Give command queue time to process
         try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Verify window1 is removed
-        #expect(frameManager.windowControllerMap[windowId1.asKey()] == nil)
+        #expect(frameManager.windowControllerMap[windowId2.asKey()] == nil)
         #expect(frame.windowStack.count == 1)
     }
 
@@ -76,20 +75,19 @@ struct WindowManagerTests {
             return
         }
 
-        let window1 = MockWindowController(title: "Window 1")
-        let window2 = MockWindowController(title: "Window 2")
-
         // Create WindowIds for test windows
         let windowId1 = WindowId(appPID: 1234, registry: windowManager.registry)
+        let window1 = MockWindowController(windowId: windowId1)
         let windowId2 = WindowId(appPID: 1235, registry: windowManager.registry)
+        let window2 = MockWindowController(windowId: windowId2)
 
         // Register windows
         frameManager.windowControllerMap[windowId1.asKey()] = window1
         frameManager.windowControllerMap[windowId2.asKey()] = window2
 
         // Add windows to frame (through addWindow API)
-        try frame.addWindow(window1)
-        try frame.addWindow(window2)
+        try frameManager.assignWindow(window1)
+        try frameManager.assignWindow(window2)
 
         // Navigate to second window
         frame.nextWindow()

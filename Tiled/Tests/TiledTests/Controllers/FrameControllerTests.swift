@@ -85,32 +85,6 @@ struct FrameControllerTests {
         #expect(frameController.windowStack.count == 0)
     }
 
-    @Test("Frame reference is set when window is added")
-    func testFrameReferenceOnAdd() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
-        let window = MockWindowController(title: "Window 1")
-
-        #expect(window.frame == nil)
-
-        // Add window through frameController (sets frame reference)
-        try frameController.addWindow(window)
-
-        #expect(window.frame === frameController)
-    }
-
-    @Test("Frame reference is cleared when window is removed")
-    func testFrameReferenceClearedOnRemove() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
-        let window = MockWindowController(title: "Window 1")
-
-        try frameController.addWindow(window)
-        #expect(window.frame === frameController)
-
-        let removed = frameController.removeWindow(window)
-        #expect(removed)
-        #expect(window.frame == nil)
-    }
-
     @Test("Focus moves to next window when active window is removed")
     func testFocusOnWindowRemoval() throws {
         let frameController = FrameController(rect: testFrame, config: config)
@@ -146,7 +120,7 @@ struct FrameControllerTests {
         #expect(frameController.windowStack.count == 1)
     }
 
-    @Test("Frame references are updated when windows are transferred between frames")
+    @Test("Windows are transferred between frames")
     func testFrameReferenceUpdateOnTransfer() throws {
         let frame1 = FrameController(rect: testFrame, config: config)
         let frame2 = FrameController(rect: testFrame, config: config)
@@ -156,9 +130,6 @@ struct FrameControllerTests {
         // Add windows to frame1
         try frame1.addWindow(window1)
         try frame1.addWindow(window2)
-
-        #expect(window1.frame === frame1)
-        #expect(window2.frame === frame1)
 
         // Manually transfer windows (takeWindowsFrom is incomplete in current refactoring)
         try frame2.windowStack.takeAll(from: frame1.windowStack)
@@ -277,24 +248,6 @@ struct FrameControllerTests {
 
         // Window should be added to target
         #expect(child2.windowStack.count == 1)
-    }
-
-    @Test("Move window updates window frame reference")
-    func testMoveWindowUpdatesFrameReference() throws {
-        let parent = FrameController(rect: testFrame, config: config)
-        let child1 = try parent.split(direction: .Vertical)
-        let child2 = parent.children[1]
-
-        let window = MockWindowController(title: "Window 1")
-        try child1.addWindow(window)
-
-        #expect(window.frame === child1)
-
-        // Move window
-        try child1.moveWindow(window, toFrame: child2)
-
-        // Frame reference should be updated
-        #expect(window.frame === child2)
     }
 
     @Test("Move window makes it active in target frame")

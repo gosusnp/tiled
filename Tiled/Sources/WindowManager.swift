@@ -12,6 +12,7 @@ class WindowManager {
     let logger: Logger
     let tracker: WindowTracker
     let registry: WindowRegistry
+    let axHelper: AccessibilityAPIHelper
 
     // Computed properties that delegate to frameManager
     var activeFrame: FrameController? {
@@ -22,9 +23,10 @@ class WindowManager {
         frameManager?.rootFrame
     }
 
-    init(logger: Logger, registry: WindowRegistry = DefaultWindowRegistry()) {
+    init(logger: Logger, registry: WindowRegistry = DefaultWindowRegistry(), axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
         self.logger = logger
         self.registry = registry
+        self.axHelper = axHelper
         self.tracker = WindowTracker(logger: logger, registry: registry)
     }
 
@@ -52,7 +54,7 @@ class WindowManager {
                 self.logger.warning("Failed to register window with registry")
                 continue
             }
-            let windowController = WindowController.fromElement(element)
+            let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.registerExistingWindow(windowController, windowId: windowId)
             do {
                 try assignWindow(windowController, shouldFocus: false)
@@ -72,7 +74,7 @@ class WindowManager {
                 self.logger.warning("Failed to register window with registry on open")
                 return
             }
-            let windowController = WindowController.fromElement(element)
+            let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
         }
 

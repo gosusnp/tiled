@@ -135,9 +135,10 @@ class FrameManager {
 
     // MARK: - Window Management
 
-    func assignWindow(_ window: WindowController, shouldFocus: Bool = false) throws {
+    func assignWindow(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
         guard let frame = activeFrame else { return }
         try frame.addWindow(window, shouldFocus: shouldFocus)
+        frameMap[window.windowId] = frame
         frame.refreshOverlay()
     }
 
@@ -200,9 +201,8 @@ class FrameManager {
             let _ = activeFrame?.removeWindow(window)
             activeFrame?.refreshOverlay()
         case .focusWindow(let window):
-            if let frame = window.frame {
-                updateActiveFrame(from: activeFrame ?? rootFrame, to: frame)
-            }
+            // TODO Implement
+            return
         case .windowAppeared(let window, let windowId):
             handleWindowAppeared(window, windowId: windowId)
         case .windowDisappeared(let windowId):
@@ -249,7 +249,7 @@ class FrameManager {
             return
         }
 
-        guard let frame = windowController.frame else {
+        guard let frame = frameMap[windowId] else {
             logger.debug("Window has no frame (floating window)")
             windowControllerMap.removeValue(forKey: windowId.asKey())
             frameMap.removeValue(forKey: windowId)

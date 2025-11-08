@@ -6,14 +6,7 @@ import Cocoa
 /// Protocol for window manipulation operations.
 /// This allows for testing with mocks that don't actually move real windows.
 protocol WindowControllerProtocol: AnyObject {
-    var window: WindowModel? { get }
-    var windowId: WindowId? { get }
-    var frame: FrameController? { get set }
-    var appName: String { get }
-    var title: String { get }
-    var isFocused: Bool { get }
-    var isMain: Bool { get }
-    var size: CGSize { get }
+    var windowId: WindowId { get }
 
     /// Raise the window to the front and focus it
     func raise()
