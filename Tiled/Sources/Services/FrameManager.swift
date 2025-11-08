@@ -16,6 +16,10 @@ class FrameManager {
     // Window controller mapping (keyed by stable WindowId, not stale AXUIElement)
     var windowControllerMap: [UUID: WindowControllerProtocol] = [:]
 
+    // Frame mapping (reverse lookup: WindowId -> FrameController)
+    // Maintained by FrameManager as single source of truth for window→frame relationships
+    private var frameMap: [WindowId: FrameController] = [:]
+
     // Command queue infrastructure
     private var commandQueue: [FrameCommand] = []
     private var isProcessing = false
@@ -143,6 +147,11 @@ class FrameManager {
 
     func unregisterWindow(windowId: WindowId) {
         windowControllerMap.removeValue(forKey: windowId.asKey())
+        frameMap.removeValue(forKey: windowId)
+    }
+
+    func frameContaining(_ windowId: WindowId) -> FrameController? {
+        frameMap[windowId]
     }
 
     func nextWindow() {
@@ -225,6 +234,8 @@ class FrameManager {
 
         do {
             try frame.addWindow(window, shouldFocus: true)
+            // Update frameMap to track window→frame relationship
+            frameMap[windowId] = frame
             frame.refreshOverlay()
         } catch {
             logger.warning("Failed to assign window: \(error)")
@@ -241,6 +252,7 @@ class FrameManager {
         guard let frame = windowController.frame else {
             logger.debug("Window has no frame (floating window)")
             windowControllerMap.removeValue(forKey: windowId.asKey())
+            frameMap.removeValue(forKey: windowId)
             return
         }
 
@@ -249,6 +261,7 @@ class FrameManager {
         // Remove from frame
         frame.removeWindow(windowController)
         windowControllerMap.removeValue(forKey: windowId.asKey())
+        frameMap.removeValue(forKey: windowId)
         frame.refreshOverlay()
 
         // Focus next window if this was active

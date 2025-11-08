@@ -9,7 +9,7 @@ import Cocoa
 ///
 /// Invariant: At least one of cgWindowID or element reference must be present.
 /// If both are lost, the window is invalid.
-class WindowId: WindowIdObserver {
+class WindowId: WindowIdObserver, Hashable {
     /// Immutable, unique identity (never changes)
     let id: UUID
 
@@ -84,5 +84,15 @@ class WindowId: WindowIdObserver {
 
     deinit {
         registry?._notifyWindowIdDestroyed(self)
+    }
+
+    // MARK: - Hashable conformance
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: WindowId, rhs: WindowId) -> Bool {
+        lhs.id == rhs.id
     }
 }

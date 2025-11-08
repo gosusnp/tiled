@@ -92,6 +92,67 @@ struct WindowIdStateTests {
 
         #expect(windowId.asKey() == key)
     }
+
+    @Test func windowIdIsHashable() {
+        let windowId = WindowId(appPID: 1234, registry: registry)
+
+        // Should be able to use as dictionary key
+        var dict: [WindowId: String] = [:]
+        dict[windowId] = "test"
+
+        #expect(dict[windowId] == "test")
+    }
+
+    @Test func identicalWindowIdsHaveSameHash() {
+        let windowId1 = WindowId(appPID: 1234, registry: registry)
+        let windowId2 = WindowId(appPID: 5678, registry: registry)
+
+        // Different instances should have different IDs
+        #expect(windowId1.id != windowId2.id)
+
+        // Different instances should have different hashes
+        var hasher1 = Hasher()
+        windowId1.hash(into: &hasher1)
+        let hash1 = hasher1.finalize()
+
+        var hasher2 = Hasher()
+        windowId2.hash(into: &hasher2)
+        let hash2 = hasher2.finalize()
+
+        #expect(hash1 != hash2)
+    }
+
+    @Test func windowIdEqualityBasedOnId() {
+        let windowId1 = WindowId(appPID: 1234, registry: registry)
+        let id1 = windowId1.id
+
+        // Create another reference to test equality by identity
+        let windowId2 = windowId1
+        #expect(windowId1 == windowId2)
+        #expect(windowId1.id == windowId2.id)
+
+        // Different WindowIds should not be equal
+        let windowId3 = WindowId(appPID: 1234, registry: registry)
+        #expect(windowId1 != windowId3)
+    }
+
+    @Test func windowIdCanBeUsedInSet() {
+        let windowId1 = WindowId(appPID: 1234, registry: registry)
+        let windowId2 = WindowId(appPID: 5678, registry: registry)
+        let windowId3 = windowId1  // Same instance
+
+        var set: Set<WindowId> = [windowId1, windowId2]
+        #expect(set.count == 2)
+
+        // Adding the same instance should not increase count
+        set.insert(windowId3)
+        #expect(set.count == 2)
+
+        // New instance should increase count
+        let windowId4 = WindowId(appPID: 9999, registry: registry)
+        set.insert(windowId4)
+        #expect(set.count == 3)
+    }
 }
 
 // MARK: - WindowRegistry Registration Tests

@@ -617,4 +617,36 @@ struct FrameManagerTests {
         #expect(rightChild.windowStack.count == 1)
         #expect(rightChild.windowStack.getActiveWindow() === window)
     }
+
+    // MARK: - FrameMap Tests
+
+    @Test("frameMap returns nil for windows not in any frame")
+    func testFrameMapReturnsNilForUnmappedWindow() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        // Create a mock registry for creating WindowId
+        let mockRegistry = MockWindowRegistry()
+        let windowId = WindowId(appPID: 1234, registry: mockRegistry)
+
+        let foundFrame = frameManager.frameContaining(windowId)
+        #expect(foundFrame == nil)
+    }
+
+    @Test("frameContaining method is accessible")
+    func testFrameContainingMethodExists() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        // Create a mock registry for creating WindowId
+        let mockRegistry = MockWindowRegistry()
+        let windowId = WindowId(appPID: 1234, registry: mockRegistry)
+
+        // This test verifies the method exists and is callable
+        // The infrastructure for frameMap maintenance happens in handleWindowAppeared
+        let result = frameManager.frameContaining(windowId)
+        #expect(result == nil)
+    }
 }
