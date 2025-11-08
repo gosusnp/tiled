@@ -233,6 +233,8 @@ class WindowTracker: @unchecked Sendable {
     /// Handle a window creation event from observer or polling service
     /// - Parameter element: The newly created window
     private func handleWindowCreated(_ element: AXUIElement) {
+        self.logger.debug("Window created event received")
+
         // Get stable window ID (persists across sleep/wake)
         guard let windowID = self.windowProvider.getWindowID(for: element) else {
             self.logger.warning("Unable to get window ID for new window")

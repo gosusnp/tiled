@@ -4,6 +4,26 @@
 import Cocoa
 import ApplicationServices
 
+// MARK: - Module-Level AXObserver Callback
+
+/// Global C callback for AXObserver events
+/// Bridges from system callback to WindowEventObserver.sharedInstance
+nonisolated(unsafe) private let axObserverCallbackFunction: @convention(c) (AXObserver, AXUIElement, CFString?, UnsafeMutableRawPointer?) -> Void = { observer, element, notification, context in
+    // Bridge back to the shared instance using weak reference
+    guard let instance = WindowEventObserver.sharedInstance else {
+        return
+    }
+
+    // Convert notification to String immediately (within C callback context)
+    let notificationString = notification.map { String($0 as CFString) }
+
+    // Dispatch to main queue to handle the event safely
+    nonisolated(unsafe) let unsafeElement = element
+    DispatchQueue.main.async {
+        instance.handleAXObserverEvent(element: unsafeElement, notification: notificationString)
+    }
+}
+
 /// Observes window-related events from the Accessibility framework.
 ///
 /// Listens for window creation, closing, and focus changes across all applications
@@ -32,7 +52,7 @@ class WindowEventObserver: @unchecked Sendable {
     /// - This is mutable global state, but only accessed from callbacks routed through DispatchQueue.main.async
     /// - The weak reference ensures thread-safe access (returns nil if instance is deallocated)
     /// - All mutations happen on the main thread via startObserving() / stopObserving()
-    nonisolated(unsafe) private static weak var sharedInstance: WindowEventObserver?
+    nonisolated(unsafe) static weak var sharedInstance: WindowEventObserver?
 
     /// Per-application observers (one observer per running app)
     /// Key: ProcessID (pid), Value: AXObserver instance
@@ -179,7 +199,6 @@ class WindowEventObserver: @unchecked Sendable {
     private func setupObserverForApplication(pid: pid_t) throws {
         // Check if observer already exists
         if appObservers[pid] != nil {
-            logger.debug("Observer already exists for pid \(pid)")
             return
         }
 
@@ -187,6 +206,8 @@ class WindowEventObserver: @unchecked Sendable {
         let observer = try createAXObserver(forProcessID: pid)
 
         // Subscribe to relevant notifications
+        // Note: kAXWindowCreatedNotification may not fire on application element
+        // We subscribe to focused window changes as proxy for new windows
         let notificationsToSubscribe: [NSString] = [
             kAXWindowCreatedNotification as NSString,
             kAXFocusedWindowChangedNotification as NSString,
@@ -221,6 +242,26 @@ class WindowEventObserver: @unchecked Sendable {
         observerSubscriptions[pid] = notificationsToSubscribe
     }
 
+    /// Handle an AXObserver event (window created, closed, focused, etc.)
+    /// Called from the AXObserver callback via main dispatch queue
+    ///
+    /// - Parameters:
+    ///   - element: The AXUIElement that triggered the event
+    ///   - notification: The notification type (e.g., kAXWindowCreatedNotification)
+    nonisolated func handleAXObserverEvent(element: AXUIElement, notification: String?) {
+        guard let notification = notification else { return }
+
+        if notification == kAXWindowCreatedNotification as String {
+            onWindowCreated?(element)
+        } else if notification == kAXFocusedWindowChangedNotification as String {
+            onWindowFocused?(element)
+        } else if notification == kAXApplicationActivatedNotification as String {
+            // For now, treat app activation similar to window focus
+            onWindowFocused?(element)
+        } else {
+        }
+    }
+
     /// Create an AXObserver for a specific process
     ///
     /// - Parameter processID: The process ID to observe
@@ -235,9 +276,7 @@ class WindowEventObserver: @unchecked Sendable {
         // all window detection via periodic polling instead.
         let result = AXObserverCreate(
             processID,
-            { (_: AXObserver, _: AXUIElement, _: CFString?, _: UnsafeMutableRawPointer?) in
-                // Observer is registered but callback is handled by polling service
-            },
+            axObserverCallbackFunction,
             &observer
         )
 
@@ -337,8 +376,6 @@ class WindowEventObserver: @unchecked Sendable {
                 notification as NSString
             )
         }
-
-        logger.debug("Unsubscribed from all notifications for pid \(pid)")
     }
 
     // MARK: - Private: Application Lifecycle
@@ -411,11 +448,6 @@ class WindowEventObserver: @unchecked Sendable {
 
         logger.debug("Workspace observers set up for app launches and terminations")
     }
-
-    // MARK: - Private: Event Handling
-    // NOTE: Event handling deferred to WindowPollingService (Phase 2).
-    // The AXObserver callback is intentionally empty to avoid Swift 6 concurrency issues.
-    // WindowTracker coordinates both observer and polling service for complete coverage.
 
 }
 
