@@ -6,6 +6,7 @@ import ApplicationServices
 
 class WindowTracker: @unchecked Sendable {
     let logger: Logger
+    let registry: WindowRegistry
 
     // MARK: - Thread Safety
 
@@ -38,8 +39,13 @@ class WindowTracker: @unchecked Sendable {
     /// Window provider for getting stable window IDs
     private let windowProvider: WindowProvider
 
-    init(logger: Logger, windowProvider: WindowProvider = RealWindowProvider()) {
+    init(
+        logger: Logger,
+        registry: WindowRegistry,
+        windowProvider: WindowProvider = RealWindowProvider()
+    ) {
         self.logger = logger
+        self.registry = registry
         self.windowProvider = windowProvider
         // MARK: - Phase 3 Integration: Step 1
         /// Observer will be initialized in startTracking() to ensure proper lifecycle

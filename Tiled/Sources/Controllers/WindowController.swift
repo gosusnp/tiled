@@ -11,13 +11,15 @@ enum WindowError: Error {
 }
 
 class WindowController: WindowControllerProtocol {
-    let window: WindowModel
+    let window: WindowModel?
+    let windowId: WindowId?
     weak var frame: FrameController?
 
     var isFocused: Bool {
+        guard let window = window else { return false }
         var value: AnyObject?
         let result =
-            AXUIElementCopyAttributeValue(self.window.element, kAXFocusedAttribute as CFString, &value)
+            AXUIElementCopyAttributeValue(window.element, kAXFocusedAttribute as CFString, &value)
 
         guard result == .success, let isFocused = value as? Bool else {
             return false
@@ -26,9 +28,10 @@ class WindowController: WindowControllerProtocol {
     }
 
     var isMain: Bool {
+        guard let window = window else { return false }
         var value: AnyObject?
         let result =
-            AXUIElementCopyAttributeValue(self.window.element, kAXMainAttribute as CFString, &value)
+            AXUIElementCopyAttributeValue(window.element, kAXMainAttribute as CFString, &value)
 
         guard result == .success, let isMain = value as? Bool else {
             return false
@@ -37,8 +40,9 @@ class WindowController: WindowControllerProtocol {
     }
 
     var size: CGSize {
+        guard let window = window else { return .zero }
         var sizeValue: CFTypeRef?
-        AXUIElementCopyAttributeValue(self.window.element, kAXSizeAttribute as CFString, &sizeValue)
+        AXUIElementCopyAttributeValue(window.element, kAXSizeAttribute as CFString, &sizeValue)
 
         let sizeValueRef = sizeValue
         var size = CGSize.zero
@@ -48,24 +52,34 @@ class WindowController: WindowControllerProtocol {
         return size
     }
 
-    var appName: String { window.appName }
-    var title: String { window.title }
+    var appName: String { window?.appName ?? "Unknown" }
+    var title: String { window?.title ?? "Untitled" }
 
     init(window: WindowModel) {
         self.window = window
+        self.windowId = nil
+    }
+
+    init(windowId: WindowId, title: String, appName: String) {
+        // New init for WindowId-based API
+        // window is nil - all element access goes through windowId via registry
+        self.windowId = windowId
+        self.window = nil
     }
 
     func raise() {
-        raiseWindow(self.window.element)
+        guard let window = window else { return }
+        raiseWindow(window.element)
     }
 
     func move(to: CGPoint) throws {
+        guard let window = window else { throw WindowError.invalidWindow }
         var position = to
         guard let axPosition = AXValueCreate(.cgPoint, &position) else {
             throw WindowError.invalidWindow
         }
 
-        let result = AXUIElementSetAttributeValue(self.window.element, kAXPositionAttribute as CFString, axPosition)
+        let result = AXUIElementSetAttributeValue(window.element, kAXPositionAttribute as CFString, axPosition)
 
         guard result == .success else {
             throw WindowError.moveFailed(result)
@@ -73,12 +87,13 @@ class WindowController: WindowControllerProtocol {
     }
 
     func resize(size: CGSize) throws {
+        guard let window = window else { throw WindowError.invalidWindow }
         var targetSize = size
         guard let axSize = AXValueCreate(.cgSize, &targetSize) else {
             throw WindowError.invalidWindow
         }
 
-        let result = AXUIElementSetAttributeValue(self.window.element, kAXSizeAttribute as CFString, axSize)
+        let result = AXUIElementSetAttributeValue(window.element, kAXSizeAttribute as CFString, axSize)
 
         guard result == .success else {
             throw WindowError.resizeFailed(result)

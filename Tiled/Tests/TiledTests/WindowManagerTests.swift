@@ -34,9 +34,13 @@ struct WindowManagerTests {
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
+        // Create WindowIds for test windows
+        let windowId1 = WindowId(appPID: 1234, registry: windowManager.registry)
+        let windowId2 = WindowId(appPID: 1235, registry: windowManager.registry)
+
         // Manually register windows like lifecycle events would
-        frameManager.windowControllerMap[window1.window.element] = window1
-        frameManager.windowControllerMap[window2.window.element] = window2
+        frameManager.windowControllerMap[windowId1.asKey()] = window1
+        frameManager.windowControllerMap[windowId2.asKey()] = window2
 
         // Add windows to frame (bypassing AX calls)
         try frame.windowStack.add(window1, shouldFocus: false)
@@ -48,12 +52,12 @@ struct WindowManagerTests {
         #expect(frameManager.windowControllerMap.count == 2)
 
         // Enqueue windowDisappeared command for window1
-        frameManager.enqueueCommand(.windowDisappeared(window1.window.element))
+        frameManager.enqueueCommand(.windowDisappeared(windowId1))
         // Give command queue time to process
         try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Verify window1 is removed
-        #expect(frameManager.windowControllerMap[window1.window.element] == nil)
+        #expect(frameManager.windowControllerMap[windowId1.asKey()] == nil)
         #expect(frame.windowStack.count == 1)
         #expect(frame.windowStack.activeWindow === window2)
     }
@@ -78,9 +82,13 @@ struct WindowManagerTests {
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
+        // Create WindowIds for test windows
+        let windowId1 = WindowId(appPID: 1234, registry: windowManager.registry)
+        let windowId2 = WindowId(appPID: 1235, registry: windowManager.registry)
+
         // Register windows
-        frameManager.windowControllerMap[window1.window.element] = window1
-        frameManager.windowControllerMap[window2.window.element] = window2
+        frameManager.windowControllerMap[windowId1.asKey()] = window1
+        frameManager.windowControllerMap[windowId2.asKey()] = window2
 
         // Add windows to frame (bypassing AX calls)
         try frame.windowStack.add(window1, shouldFocus: false)
@@ -93,12 +101,12 @@ struct WindowManagerTests {
         #expect(frame.activeWindow === window2)
 
         // Close the active window by enqueuing command
-        frameManager.enqueueCommand(.windowDisappeared(window2.window.element))
+        frameManager.enqueueCommand(.windowDisappeared(windowId2))
         // Give command queue time to process
         try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Verify window1 is now active
-        #expect(frameManager.windowControllerMap[window2.window.element] == nil)
+        #expect(frameManager.windowControllerMap[windowId2.asKey()] == nil)
         #expect(frame.activeWindow === window1)
     }
 }

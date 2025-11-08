@@ -9,13 +9,20 @@ import ApplicationServices
 /// This service acts as a fallback/validation mechanism for window tracking:
 /// - Polls every 5-10 seconds to check current window state
 /// - Compares with cached state to find opened/closed/focused changes
-/// - Emits callbacks for detected changes (with deduplication)
+/// - Emits callbacks for detected CGWindowID changes
 /// - Complements real-time observer for robustness
 ///
 /// Hybrid Strategy:
 /// - Observer (real-time): ~10ms latency, may miss events
 /// - Polling (fallback): 5-10s latency, catches everything
 /// - Result: Responsive + Robust
+///
+/// Pure Polling:
+/// - Detects changes in CGWindowID state only (stable system identifier)
+/// - Local cache of what was seen last poll
+/// - Fires callbacks for new/closed windows detected via CGWindowID comparison
+/// - Caller (WindowTracker) responsible for deduplication and registry integration
+/// - No knowledge of WindowId or WindowRegistry
 ///
 /// Dependencies:
 /// - WorkspaceProvider: For accessing running applications
@@ -41,9 +48,10 @@ class WindowPollingService: @unchecked Sendable {
     private var pollingTimer: DispatchSourceTimer?
 
     /// Cache of currently known windows for state comparison
-    /// Maps window key (e.g., "Safari:0x7f1234abcd") to AXUIElement
+    /// Maps CGWindowID to AXUIElement
     /// Used to detect which windows opened/closed since last poll
-    private var cachedWindowState: [String: AXUIElement] = [:]
+    /// This is pure polling state - what did we see in the last poll cycle?
+    private var cachedWindowState: [CGWindowID: AXUIElement] = [:]
 
     /// Last known focused window
     /// Used to detect focus changes
@@ -143,14 +151,19 @@ class WindowPollingService: @unchecked Sendable {
     /// Perform periodic validation of window state
     /// Called by polling timer every 5-10 seconds
     ///
-    /// This should:
+    /// This performs pure CGWindowID state comparison:
     /// 1. Get current windows via Accessibility API
     /// 2. Compare with cachedWindowState to find:
     ///    - Windows that were closed (in cache, not in current)
     ///    - Windows that were opened (in current, not in cache)
     ///    - Focus changes (if different from lastFocusedWindow)
-    /// 3. Emit appropriate callbacks (with deduplication to avoid duplicates from observer)
+    /// 3. Emit appropriate callbacks (caller deduplicates)
     /// 4. Update cache with new state
+    ///
+    /// Deduplication:
+    /// - Caller (WindowTracker.handleWindowCreated) deduplicates via local tracking
+    /// - Same handler processes both observer and polling events
+    /// - Registry integration happens in Tracker, not here
     ///
     /// - Note: This runs on the main thread (timer callback)
     private func performPollingValidation() {
@@ -160,28 +173,27 @@ class WindowPollingService: @unchecked Sendable {
         // Get current focus
         let currentFocus = getFocusedWindowForPolling()
 
-        // Build set of current window keys
-        var currentWindowKeys = Set<String>()
+        // Build map of current windows by CGWindowID (pure state comparison)
+        var currentWindowMap: [CGWindowID: AXUIElement] = [:]
         for window in currentWindows {
-            let key = getWindowKey(window)
-            currentWindowKeys.insert(key)
+            if let windowID = windowProvider.getWindowID(for: window) {
+                currentWindowMap[windowID] = window
+            }
         }
 
         // Find closed windows (in cache, not in current)
-        for (cachedKey, cachedWindow) in cachedWindowState {
-            if !currentWindowKeys.contains(cachedKey) {
-                // Window was closed
-                // Pass the cached key directly - don't recompute it on dead windows
-                emitWindowClosedWithDeduplication(cachedWindow, cachedKey: cachedKey)
+        for (cachedWindowID, cachedWindow) in cachedWindowState {
+            if currentWindowMap[cachedWindowID] == nil {
+                // Window was closed - fire callback
+                onWindowClosed?(cachedWindow)
             }
         }
 
         // Find opened windows (in current, not in cache)
-        for window in currentWindows {
-            let key = getWindowKey(window)
-            if cachedWindowState[key] == nil {
-                // Window is new
-                emitWindowOpenedWithDeduplication(window, key: key)
+        for (windowID, window) in currentWindowMap {
+            if cachedWindowState[windowID] == nil {
+                // Window is new - fire callback, let caller deduplicate
+                onWindowOpened?(window)
             }
         }
 
@@ -193,12 +205,8 @@ class WindowPollingService: @unchecked Sendable {
             }
         }
 
-        // Update cache with current state
-        cachedWindowState.removeAll()
-        for window in currentWindows {
-            let key = getWindowKey(window)
-            cachedWindowState[key] = window
-        }
+        // Update cache with current state for next poll
+        cachedWindowState = currentWindowMap
     }
 
     /// Get all currently visible windows on the system
@@ -237,61 +245,4 @@ class WindowPollingService: @unchecked Sendable {
         return windowProvider.getFocusedWindowForApplication(frontmostApp)
     }
 
-    /// Create a unique key for a window for deduplication
-    /// Used to identify windows across observer and polling mechanisms
-    ///
-    /// Strategy:
-    /// - Combine window title with its memory address (stable during a poll cycle)
-    /// - Create identifier like "Safari:Window#0x7f1234abcd"
-    /// - Must be consistent within polling cycles for deduplication
-    ///
-    /// - Parameter element: The AXUIElement to create a key for
-    /// - Returns: A stable unique identifier for this poll cycle
-    private func getWindowKey(_ element: AXUIElement) -> String {
-        // Get stable window ID (persists across sleep/wake)
-        if let windowID = windowProvider.getWindowID(for: element) {
-            return "window:\(windowID)"
-        }
-
-        // Fallback to PID if we can't get stable ID
-        var pid: pid_t = 0
-        AXUIElementGetPid(element, &pid)
-        return "window:pid:\(pid):\(element.hashValue)"
-    }
-
-    /// Emit window closed event with deduplication
-    /// Only emit if not already emitted by observer
-    ///
-    /// Strategy:
-    /// - Uses the cached key to avoid querying dead windows
-    /// - Dead windows can't be queried with getWindowID(), so we pass the key directly
-    /// - Emits the close event since we detected it in polling
-    ///
-    /// - Parameters:
-    ///   - element: The window that was closed
-    ///   - cachedKey: The key used in the cache (already computed from live window)
-    private func emitWindowClosedWithDeduplication(_ element: AXUIElement, cachedKey: String) {
-        // We have the cached key, so we know this window was previously tracked
-        // Emit the close event
-        onWindowClosed?(element)
-    }
-
-    /// Emit window opened event with deduplication
-    /// Only emit if not already emitted by observer
-    ///
-    /// Strategy:
-    /// - Check if window is already in cachedWindowState
-    /// - Only call onWindowCreated if observer hasn't already notified
-    /// - This prevents duplicate events
-    ///
-    /// - Parameters:
-    ///   - element: The window that was opened
-    ///   - key: The unique identifier for this window (for efficiency)
-    private func emitWindowOpenedWithDeduplication(_ element: AXUIElement, key: String) {
-        // Check if this window is already in the cache
-        if cachedWindowState[key] == nil {
-            // It's not in cache, so observer hasn't notified yet
-            onWindowOpened?(element)
-        }
-    }
 }

@@ -6,15 +6,15 @@ import Cocoa
 
 /// Mock WindowController for testing that doesn't actually move/resize real windows
 class MockWindowController: WindowControllerProtocol {
-    let window: WindowModel
+    let window: WindowModel?
     weak var frame: FrameController?
 
     private(set) var raiseCallCount = 0
     private(set) var moveCallCount = 0
     private(set) var resizeCallCount = 0
 
-    var appName: String { window.appName }
-    var title: String { window.title }
+    var appName: String { window?.appName ?? "MockApp" }
+    var title: String { window?.title ?? "Mock Window" }
 
     var isFocused: Bool { false }
     var isMain: Bool { false }

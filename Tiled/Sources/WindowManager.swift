@@ -11,6 +11,7 @@ class WindowManager {
     var frameManager: FrameManager?
     let logger: Logger
     let tracker: WindowTracker
+    let registry: WindowRegistry
 
     // Computed properties that delegate to frameManager
     var activeFrame: FrameController? {
@@ -21,9 +22,10 @@ class WindowManager {
         frameManager?.rootFrame
     }
 
-    init(logger: Logger) {
+    init(logger: Logger, registry: WindowRegistry = DefaultWindowRegistry()) {
         self.logger = logger
-        self.tracker = WindowTracker(logger: logger)
+        self.registry = registry
+        self.tracker = WindowTracker(logger: logger, registry: registry)
     }
 
     func initialize() {
@@ -45,14 +47,18 @@ class WindowManager {
         // New windows that arrive during normal operation are enqueued through the command queue.
         // TODO: Consider unifying to always use enqueueCommand() if startup completeness becomes critical.
         // Currently the timing window between discovery and callback registration is negligible.
-        for window in self.tracker.getWindows() {
-            let windowController = WindowController.fromElement(window)
-            self.frameManager?.registerExistingWindow(windowController, element: window)
+        for element in self.tracker.getWindows() {
+            guard let windowId = self.registry.getOrRegister(element: element) else {
+                self.logger.warning("Failed to register window with registry")
+                continue
+            }
+            let windowController = WindowController.fromElement(element)
+            self.frameManager?.registerExistingWindow(windowController, windowId: windowId)
             do {
                 try assignWindow(windowController, shouldFocus: false)
             } catch {
                 self.logger.warning("Failed to assign initial window: \(error)")
-                self.frameManager?.unregisterWindow(element: window)
+                self.frameManager?.unregisterWindow(windowId: windowId)
             }
         }
 
@@ -61,12 +67,22 @@ class WindowManager {
         // Register callbacks for window lifecycle events
         // New windows are enqueued as commands, ensuring atomic processing with frame operations
         tracker.onWindowOpened = { [weak self] element in
+            guard let self = self else { return }
+            guard let windowId = self.registry.getOrRegister(element: element) else {
+                self.logger.warning("Failed to register window with registry on open")
+                return
+            }
             let windowController = WindowController.fromElement(element)
-            self?.frameManager?.enqueueCommand(.windowAppeared(windowController, element))
+            self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
         }
 
         tracker.onWindowClosed = { [weak self] element in
-            self?.frameManager?.enqueueCommand(.windowDisappeared(element))
+            guard let self = self else { return }
+            guard let windowId = self.registry.getWindowId(for: element) else {
+                self.logger.debug("Window closed but not found in registry")
+                return
+            }
+            self.frameManager?.enqueueCommand(.windowDisappeared(windowId))
         }
     }
 

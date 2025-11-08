@@ -33,6 +33,6 @@ enum FrameCommand {
     case focusWindow(WindowControllerProtocol)
 
     // Window lifecycle events
-    case windowAppeared(WindowControllerProtocol, AXUIElement)
-    case windowDisappeared(AXUIElement)
+    case windowAppeared(WindowControllerProtocol, WindowId)
+    case windowDisappeared(WindowId)
 }
