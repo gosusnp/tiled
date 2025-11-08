@@ -123,10 +123,9 @@ class FrameManager {
 
     private func moveActiveWindow(direction: NavigationDirection) throws {
         guard let current = activeFrame else { return }
-        guard let window = current.activeWindow else { return }
         guard let targetFrame = navigationService.findAdjacentFrame(from: current, direction: direction) else { return }
 
-        try current.moveWindow(window, toFrame: targetFrame)
+        try current.moveActiveWindow(to: targetFrame)
         updateActiveFrame(from: current, to: targetFrame)
     }
 
@@ -208,7 +207,7 @@ class FrameManager {
         old?.setActive(false)
         new.setActive(true)
         activeFrame = new
-        new.activeWindow?.raise()
+        new.raiseActiveWindow()
     }
 
     // MARK: - Window Lifecycle Handlers
@@ -245,7 +244,7 @@ class FrameManager {
             return
         }
 
-        let wasActive = frame.activeWindow === windowController
+        let wasActive = frame.isActiveWindow(windowController)
 
         // Remove from frame
         frame.removeWindow(windowController)
@@ -253,8 +252,8 @@ class FrameManager {
         frame.refreshOverlay()
 
         // Focus next window if this was active
-        if wasActive, let newActive = frame.activeWindow {
-            newActive.raise()
+        if wasActive {
+            frame.raiseActiveWindow()
         }
 
         logger.debug("Window removed from frame")

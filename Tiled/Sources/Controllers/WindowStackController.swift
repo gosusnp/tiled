@@ -76,11 +76,13 @@ class WindowStackController {
     func nextWindow() {
         guard !windows.isEmpty else { return }
         activeIndex = (activeIndex + 1) % windows.count
+        activeWindow?.raise()
     }
 
     func previousWindow() {
         guard !windows.isEmpty else { return }
         activeIndex = activeIndex == 0 ? windows.count - 1 : activeIndex - 1
+        activeWindow?.raise()
     }
 }
 

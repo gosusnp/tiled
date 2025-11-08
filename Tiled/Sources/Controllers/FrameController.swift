@@ -26,10 +26,6 @@ class FrameController {
     var splitDirection: Direction? = nil  // The direction this frame was split (if it has children)
     private var isActive: Bool = false
 
-    var activeWindow: WindowControllerProtocol? {
-        self.windowStack.activeWindow
-    }
-
     func setActive(_ isActive: Bool) {
         self.isActive = isActive
         self.frameWindow.setActive(isActive)
@@ -96,13 +92,11 @@ class FrameController {
 
     func nextWindow() {
         self.windowStack.nextWindow()
-        self.activeWindow?.raise()
         self.refreshOverlay()
     }
 
     func previousWindow() {
         self.windowStack.previousWindow()
-        self.activeWindow?.raise()
         self.refreshOverlay()
     }
 
@@ -118,6 +112,23 @@ class FrameController {
         // Refresh both frames
         self.refreshOverlay()
         targetFrame.refreshOverlay()
+    }
+
+    /// Check if a specific window is the active window in this frame
+    func isActiveWindow(_ window: WindowControllerProtocol) -> Bool {
+        return self.windowStack.activeWindow === window
+    }
+
+    /// Move the active window to another frame
+    func moveActiveWindow(to targetFrame: FrameController) throws {
+        guard let window = self.windowStack.activeWindow else { return }
+        try self.moveWindow(window, toFrame: targetFrame)
+    }
+
+    /// Raise the active window in this frame
+    func raiseActiveWindow() {
+        self.windowStack.activeWindow?.raise()
+        self.refreshOverlay()
     }
 
     func takeWindowsFrom(_ other: FrameController) throws {

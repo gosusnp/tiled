@@ -23,7 +23,7 @@ struct FrameControllerTests {
         #expect(frameController.windowStack.count == 0)
         #expect(frameController.children.isEmpty)
         #expect(frameController.windowStack.activeIndex == 0)
-        #expect(frameController.activeWindow == nil)
+        #expect(frameController.windowStack.activeWindow == nil)
     }
 
     @Test("nextWindow delegates to windowStack")
@@ -36,13 +36,13 @@ struct FrameControllerTests {
         try frameController.windowStack.add(window1)
         try frameController.windowStack.add(window2)
 
-        #expect(frameController.activeWindow === window1)
+        #expect(frameController.windowStack.activeWindow === window1)
 
         frameController.nextWindow()
-        #expect(frameController.activeWindow === window2)
+        #expect(frameController.windowStack.activeWindow === window2)
 
         frameController.nextWindow()
-        #expect(frameController.activeWindow === window1)
+        #expect(frameController.windowStack.activeWindow === window1)
     }
 
     @Test("previousWindow delegates to windowStack")
@@ -55,13 +55,13 @@ struct FrameControllerTests {
         try frameController.windowStack.add(window1)
         try frameController.windowStack.add(window2)
 
-        #expect(frameController.activeWindow === window1)
+        #expect(frameController.windowStack.activeWindow === window1)
 
         frameController.previousWindow()
-        #expect(frameController.activeWindow === window2)
+        #expect(frameController.windowStack.activeWindow === window2)
 
         frameController.previousWindow()
-        #expect(frameController.activeWindow === window1)
+        #expect(frameController.windowStack.activeWindow === window1)
     }
 
     @Test("Split creates child frames")
@@ -82,8 +82,8 @@ struct FrameControllerTests {
     func testActiveWindowDelegation() {
         let frameController = FrameController(rect: testFrame, config: config)
 
-        #expect(frameController.activeWindow == nil)
-        #expect(frameController.activeWindow === frameController.windowStack.activeWindow)
+        #expect(frameController.windowStack.activeWindow == nil)
+        #expect(frameController.windowStack.activeWindow === frameController.windowStack.activeWindow)
     }
 
     @Test("Frame reference is set when window is added")
@@ -134,14 +134,14 @@ struct FrameControllerTests {
 
         // Navigate to second window
         frameController.nextWindow()
-        #expect(frameController.activeWindow === window2)
+        #expect(frameController.windowStack.activeWindow === window2)
 
         // Remove the active window
         let removed = frameController.removeWindow(window2)
         #expect(removed)
 
         // Active window should move to the next one (window3)
-        #expect(frameController.activeWindow === window3)
+        #expect(frameController.windowStack.activeWindow === window3)
     }
 
     @Test("Removing non-existent window returns false")
@@ -299,7 +299,7 @@ struct FrameControllerTests {
 
         // Window should be added to target
         #expect(child2.windowStack.count == 1)
-        #expect(child2.activeWindow === window)
+        #expect(child2.windowStack.activeWindow === window)
     }
 
     @Test("Move window updates window frame reference")
@@ -335,13 +335,13 @@ struct FrameControllerTests {
         try child2.windowStack.add(window2, shouldFocus: false)
         window2.frame = child2
 
-        #expect(child2.activeWindow === window2)
+        #expect(child2.windowStack.activeWindow === window2)
 
         // Move window1 to child2
         try child1.moveWindow(window1, toFrame: child2)
 
         // window1 should be active in child2
-        #expect(child2.activeWindow === window1)
+        #expect(child2.windowStack.activeWindow === window1)
     }
 
     @Test("Move window with multiple windows in source")
@@ -369,7 +369,7 @@ struct FrameControllerTests {
         // Source should have 2 remaining
         #expect(child1.windowStack.count == 2)
         #expect(child2.windowStack.count == 1)
-        #expect(child2.activeWindow === window2)
+        #expect(child2.windowStack.activeWindow === window2)
         #expect(!child1.windowStack.all.contains(where: { $0 === window2 }))
     }
 
@@ -387,13 +387,13 @@ struct FrameControllerTests {
         window1.frame = child1
         window2.frame = child1
 
-        #expect(child1.activeWindow === window1)
+        #expect(child1.windowStack.activeWindow === window1)
 
         // Move active window
         try child1.moveWindow(window1, toFrame: child2)
 
         // Active should shift to window2 in child1
-        #expect(child1.activeWindow === window2)
+        #expect(child1.windowStack.activeWindow === window2)
     }
 
     @Test("Recovery: closeFrame gracefully handles inconsistent tree with wrong number of children")

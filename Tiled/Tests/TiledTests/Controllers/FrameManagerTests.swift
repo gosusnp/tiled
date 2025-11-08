@@ -615,6 +615,6 @@ struct FrameManagerTests {
         // Window should have moved
         #expect(leftChild.windowStack.count == 0)
         #expect(rightChild.windowStack.count == 1)
-        #expect(rightChild.activeWindow === window)
+        #expect(rightChild.windowStack.activeWindow === window)
     }
 }
