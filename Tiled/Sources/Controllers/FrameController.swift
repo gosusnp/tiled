@@ -116,18 +116,18 @@ class FrameController {
 
     /// Check if a specific window is the active window in this frame
     func isActiveWindow(_ window: WindowControllerProtocol) -> Bool {
-        return self.windowStack.activeWindow === window
+        return self.windowStack.isActiveWindow(window)
     }
 
     /// Move the active window to another frame
     func moveActiveWindow(to targetFrame: FrameController) throws {
-        guard let window = self.windowStack.activeWindow else { return }
+        guard let window = self.windowStack.getActiveWindow() else { return }
         try self.moveWindow(window, toFrame: targetFrame)
     }
 
     /// Raise the active window in this frame
     func raiseActiveWindow() {
-        self.windowStack.activeWindow?.raise()
+        self.windowStack.getActiveWindow()?.raise()
         self.refreshOverlay()
     }
 

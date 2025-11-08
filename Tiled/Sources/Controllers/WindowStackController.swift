@@ -3,6 +3,13 @@
 
 import Cocoa
 
+// NOTE: This class manages the tab order and active window state for a frame's windows.
+// Consider merging into FrameController in the future:
+// - WindowStackController only serves FrameController (no independent purpose)
+// - FrameController already owns WindowStackController instances
+// - There's bidirectional coupling: windows have frame references, frames manipulate window state
+// - The abstraction boundary feels artificial and doesn't provide real separation of concerns
+
 @MainActor
 class WindowStackController {
     private let styleProvider: StyleProvider
@@ -14,11 +21,6 @@ class WindowStackController {
     }
 
     // Safe getters
-    var activeWindow: WindowControllerProtocol? {
-        guard !windows.isEmpty && activeIndex < windows.count else { return nil }
-        return windows[activeIndex]
-    }
-
     var count: Int {
         windows.count
     }
@@ -35,6 +37,22 @@ class WindowStackController {
                 isActive: isActive,
             )
         }
+    }
+
+    // Private accessor for active window
+    private var activeWindow: WindowControllerProtocol? {
+        guard !windows.isEmpty && activeIndex < windows.count else { return nil }
+        return windows[activeIndex]
+    }
+
+    // Query methods for active window
+    func isActiveWindow(_ window: WindowControllerProtocol) -> Bool {
+        guard !windows.isEmpty && activeIndex < windows.count else { return false }
+        return windows[activeIndex] === window
+    }
+
+    func getActiveWindow() -> WindowControllerProtocol? {
+        return activeWindow
     }
 
     // Window management

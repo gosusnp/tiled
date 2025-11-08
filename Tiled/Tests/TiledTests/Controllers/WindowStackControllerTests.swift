@@ -19,7 +19,7 @@ struct WindowStackControllerTests {
         #expect(stack.count == 0)
         #expect(stack.all.isEmpty)
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow == nil)
+        #expect(stack.getActiveWindow() == nil)
     }
 
     @Test("Adds a window to the stack")
@@ -31,7 +31,7 @@ struct WindowStackControllerTests {
 
         #expect(stack.count == 1)
         #expect(stack.all.count == 1)
-        #expect(stack.activeWindow === window)
+        #expect(stack.getActiveWindow() === window)
     }
 
     @Test("Rejects duplicate windows")
@@ -64,20 +64,20 @@ struct WindowStackControllerTests {
         try stack.add(window3)
 
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
 
         stack.nextWindow()
         #expect(stack.activeIndex == 1)
-        #expect(stack.activeWindow === window2)
+        #expect(stack.getActiveWindow() === window2)
 
         stack.nextWindow()
         #expect(stack.activeIndex == 2)
-        #expect(stack.activeWindow === window3)
+        #expect(stack.getActiveWindow() === window3)
 
         // Wraps around
         stack.nextWindow()
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
     }
 
     @Test("Cycles to previous window")
@@ -95,15 +95,15 @@ struct WindowStackControllerTests {
 
         stack.previousWindow()
         #expect(stack.activeIndex == 2)
-        #expect(stack.activeWindow === window3)
+        #expect(stack.getActiveWindow() === window3)
 
         stack.previousWindow()
         #expect(stack.activeIndex == 1)
-        #expect(stack.activeWindow === window2)
+        #expect(stack.getActiveWindow() === window2)
 
         stack.previousWindow()
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
     }
 
     @Test("Removes a window and adjusts activeIndex")
@@ -125,7 +125,7 @@ struct WindowStackControllerTests {
         #expect(removed)
         #expect(stack.count == 2)
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window2)
+        #expect(stack.getActiveWindow() === window2)
     }
 
     @Test("Removes middle window and adjusts activeIndex")
@@ -148,7 +148,7 @@ struct WindowStackControllerTests {
         #expect(removed)
         #expect(stack.count == 2)
         #expect(stack.activeIndex == 1) // Decremented because removed index < activeIndex
-        #expect(stack.activeWindow === window3)
+        #expect(stack.getActiveWindow() === window3)
     }
 
     @Test("Handles removing last window with activeIndex adjustment")
@@ -168,7 +168,7 @@ struct WindowStackControllerTests {
         #expect(removed)
         #expect(stack.count == 1)
         #expect(stack.activeIndex == 0) // Adjusted to valid index
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
     }
 
     @Test("Returns false when removing non-existent window")
@@ -182,7 +182,7 @@ struct WindowStackControllerTests {
         let removed = stack.remove(window2)
         #expect(!removed)
         #expect(stack.count == 1)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
     }
 
     @Test("nextWindow does nothing on empty stack")
@@ -191,7 +191,7 @@ struct WindowStackControllerTests {
 
         stack.nextWindow()
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow == nil)
+        #expect(stack.getActiveWindow() == nil)
     }
 
     @Test("previousWindow does nothing on empty stack")
@@ -200,7 +200,7 @@ struct WindowStackControllerTests {
 
         stack.previousWindow()
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow == nil)
+        #expect(stack.getActiveWindow() == nil)
     }
 
     @Test("Returns correct activeWindow when stack has one window")
@@ -210,7 +210,7 @@ struct WindowStackControllerTests {
 
         try stack.add(window)
 
-        #expect(stack.activeWindow === window)
+        #expect(stack.getActiveWindow() === window)
         #expect(stack.activeIndex == 0)
     }
 
@@ -255,7 +255,7 @@ struct WindowStackControllerTests {
         #expect(sourceStack.count == 0)
         #expect(sourceStack.all.isEmpty)
         #expect(sourceStack.activeIndex == 0)
-        #expect(sourceStack.activeWindow == nil)
+        #expect(sourceStack.getActiveWindow() == nil)
     }
 
     @Test("TakeAll with target stack that already has windows")
@@ -293,12 +293,12 @@ struct WindowStackControllerTests {
 
         try stack.add(window1)
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
 
         // Add second window with shouldFocus=true
         try stack.add(window2, shouldFocus: true)
         #expect(stack.activeIndex == 1)
-        #expect(stack.activeWindow === window2)
+        #expect(stack.getActiveWindow() === window2)
     }
 
     @Test("Adding window with shouldFocus=false keeps previous active")
@@ -309,12 +309,12 @@ struct WindowStackControllerTests {
 
         try stack.add(window1)
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
 
         // Add second window with shouldFocus=false (default)
         try stack.add(window2, shouldFocus: false)
         #expect(stack.activeIndex == 0)
-        #expect(stack.activeWindow === window1)
+        #expect(stack.getActiveWindow() === window1)
         #expect(stack.count == 2)
     }
 }

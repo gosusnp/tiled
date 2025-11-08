@@ -59,7 +59,7 @@ struct WindowManagerTests {
         // Verify window1 is removed
         #expect(frameManager.windowControllerMap[windowId1.asKey()] == nil)
         #expect(frame.windowStack.count == 1)
-        #expect(frame.windowStack.activeWindow === window2)
+        #expect(frame.windowStack.getActiveWindow() === window2)
     }
 
     @Test("windowDisappeared focuses new active window when active window closes")
@@ -98,7 +98,7 @@ struct WindowManagerTests {
 
         // Navigate to second window
         frame.nextWindow()
-        #expect(frame.windowStack.activeWindow === window2)
+        #expect(frame.windowStack.getActiveWindow() === window2)
 
         // Close the active window by enqueuing command
         frameManager.enqueueCommand(.windowDisappeared(windowId2))
@@ -107,6 +107,6 @@ struct WindowManagerTests {
 
         // Verify window1 is now active
         #expect(frameManager.windowControllerMap[windowId2.asKey()] == nil)
-        #expect(frame.windowStack.activeWindow === window1)
+        #expect(frame.windowStack.getActiveWindow() === window1)
     }
 }
