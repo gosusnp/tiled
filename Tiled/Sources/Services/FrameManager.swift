@@ -248,11 +248,6 @@ class FrameManager {
     }
 
     private func handleWindowDisappeared(_ windowId: WindowId) {
-        guard let windowController = windowControllerMap[windowId.asKey()] else {
-            logger.debug("Window disappeared but not found in map")
-            return
-        }
-
         guard let frame = frameMap[windowId] else {
             logger.debug("Window has no frame (floating window)")
             windowControllerMap.removeValue(forKey: windowId.asKey())
@@ -260,10 +255,10 @@ class FrameManager {
             return
         }
 
-        let wasActive = frame.isActiveWindow(windowController)
+        let wasActive = frame.isActiveWindow(windowId)
 
         // Remove from frame
-        frame.removeWindow(windowId)
+        let _ = frame.removeWindow(windowId)
         windowControllerMap.removeValue(forKey: windowId.asKey())
         frameMap.removeValue(forKey: windowId)
         frame.refreshOverlay()

@@ -134,8 +134,7 @@ class FrameController {
     }
 
     /// Check if a specific window is the active window in this frame
-    func isActiveWindow(_ window: WindowControllerProtocol) -> Bool {
-        let windowId = window.windowId
+    func isActiveWindow(_ windowId: WindowId) -> Bool {
         return self.windowStack.isActiveWindow(windowId)
     }
 
