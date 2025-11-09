@@ -335,8 +335,8 @@ struct FrameManagerTests {
 
     // MARK: - Frame Clearing Tests
 
-    @Test("Parent frame is cleared after split")
-    func testParentFrameClearedAfterSplit() throws {
+    @Test("Parent frame becomes non-leaf after split")
+    func testParentFrameBecomesNonLeafAfterSplit() throws {
         let frameManager = FrameManager(config: config, logger: logger)
         let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         frameManager.rootFrame = createFrameController(testFrame)
@@ -347,15 +347,16 @@ struct FrameManagerTests {
             return
         }
 
-        // Get the actual mock frame window from the root frame
-        let mockWindow = root.frameWindow as? MockFrameWindow
-        mockWindow?.clearCallCount = 0
+        // Root starts as leaf with no windows
+        #expect(root.children.isEmpty)
 
-        // Split should clear the parent frame
+        // Split should make parent non-leaf
         try frameManager.splitHorizontally()
 
-        // Parent frame should have been cleared
-        #expect((mockWindow?.clearCallCount ?? 0) >= 1)
+        // Parent frame should now have children
+        #expect(!root.children.isEmpty)
+        // Parent frame's tabs should be empty (observer/clear() is tested in FrameWindowObserverTests)
+        #expect(root.windowTabs.isEmpty)
     }
 
     @Test("Children frames are not cleared after split")

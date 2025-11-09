@@ -59,12 +59,7 @@ class FrameController {
     /// Update the published windowTabs property based on current state
     private func updateWindowTabs() {
         self.windowTabs = computeWindowTabs()
-
-        // Non-leaf frames need explicit visual feedback (dimmed border) that the frame is inactive.
-        // The observer handles empty tab rendering, but we must explicitly call clear() to dim the border.
-        if !self.children.isEmpty && self.windowTabs.isEmpty {
-            self.frameWindow.clear()
-        }
+        // State change is published via @Published; observer handles all UI updates
     }
 
     /// Public initializer for production use

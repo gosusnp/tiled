@@ -55,7 +55,13 @@ class FrameWindow: FrameWindowProtocol {
         // Subscribe to windowTabs changes
         frameController.$windowTabs
             .sink { [weak self] tabs in
-                self?.updateOverlay(tabs: tabs)
+                // If tabs are empty, frame is non-leaf (children own the display).
+                // Call clear() to show dimmed border. Otherwise update overlay with tabs.
+                if tabs.isEmpty {
+                    self?.clear()
+                } else {
+                    self?.updateOverlay(tabs: tabs)
+                }
             }
             .store(in: &cancellables)
     }
