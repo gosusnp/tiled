@@ -647,4 +647,23 @@ struct FrameManagerTests {
         let result = frameManager.frameContaining(windowId)
         #expect(result == nil)
     }
+
+    // MARK: - Window Positioning Tests
+
+    @Test("assignWindow positions window in frame")
+    func testAssignWindowPositionsWindow() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+
+        // Assign window should trigger positioning
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // Window should have been resized and moved
+        #expect(window.resizeCallCount > 0, "Window should be resized when assigned to frame")
+        #expect(window.moveCallCount > 0, "Window should be moved when assigned to frame")
+    }
 }

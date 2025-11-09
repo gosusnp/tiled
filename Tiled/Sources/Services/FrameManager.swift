@@ -272,6 +272,8 @@ class FrameManager {
             try frame.addWindow(windowId, shouldFocus: true)
             // Update frameMap to track window→frame relationship
             frameMap[windowId] = frame
+            // Position window in its frame
+            try snapWindowToFrame(windowId, frame: frame)
             frame.refreshOverlay()
         } catch {
             logger.warning("Failed to assign window: \(error)")
