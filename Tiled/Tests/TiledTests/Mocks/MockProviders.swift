@@ -4,22 +4,36 @@
 import Cocoa
 @testable import Tiled
 
-// MARK: - Window Provider Mock
+// MARK: - Accessibility API Helper Mock
 
-class TestWindowProvider: WindowProvider {
+class TestAccessibilityAPIHelper: AccessibilityAPIHelper {
     var returnWindows: [AXUIElement] = []
     var windowIDMap: [ObjectIdentifier: CGWindowID] = [:]
 
+    // MARK: - Element Information
+    func getAppPID(_ element: AXUIElement) -> pid_t? {
+        return 1234
+    }
+
+    func getWindowID(_ element: AXUIElement) -> CGWindowID? {
+        return windowIDMap[ObjectIdentifier(element)]
+    }
+
+    func getWindowTitle(_ element: AXUIElement) -> String {
+        return "Test Window"
+    }
+
+    func isElementValid(_ element: AXUIElement) -> Bool {
+        return true
+    }
+
+    // MARK: - Window Discovery
     func getWindowsForApplication(_ app: NSRunningApplication) -> [AXUIElement] {
         return returnWindows
     }
 
     func getFocusedWindowForApplication(_ app: NSRunningApplication) -> AXUIElement? {
         return returnWindows.first
-    }
-
-    func getTitleForWindow(_ window: AXUIElement) -> String {
-        return "Test Window"
     }
 
     func getWindowZOrder() -> [[String: Any]]? {
@@ -30,8 +44,17 @@ class TestWindowProvider: WindowProvider {
         return true
     }
 
-    func getWindowID(for element: AXUIElement) -> CGWindowID? {
-        return windowIDMap[ObjectIdentifier(element)]
+    // MARK: - Window Operations
+    func move(_ element: AXUIElement, to: CGPoint) throws {
+        // Mock: no-op
+    }
+
+    func raise(_ element: AXUIElement) {
+        // Mock: no-op
+    }
+
+    func resize(_ element: AXUIElement, size: CGSize) throws {
+        // Mock: no-op
     }
 }
 

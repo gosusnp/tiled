@@ -36,17 +36,17 @@ class WindowTracker: @unchecked Sendable {
     /// Polling service for periodic window state validation (lazy initialization)
     private var pollingService: WindowPollingService!
 
-    /// Window provider for getting stable window IDs
-    private let windowProvider: WindowProvider
+    /// Accessibility API helper for getting stable window IDs and window operations
+    private let axHelper: AccessibilityAPIHelper
 
     init(
         logger: Logger,
         registry: WindowRegistry,
-        windowProvider: WindowProvider = RealWindowProvider()
+        axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()
     ) {
         self.logger = logger
         self.registry = registry
-        self.windowProvider = windowProvider
+        self.axHelper = axHelper
         // MARK: - Phase 3 Integration: Step 1
         /// Observer will be initialized in startTracking() to ensure proper lifecycle
     }
@@ -186,7 +186,7 @@ class WindowTracker: @unchecked Sendable {
         // Try to find by reference first
         if let index = self.windows.firstIndex(where: { $0 == element }) {
             let window = self.windows[index]
-            if let windowID = self.windowProvider.getWindowID(for: window) {
+            if let windowID = self.axHelper.getWindowID(window) {
                 self.trackedWindowIDs.remove(windowID)
             }
             self.windows.remove(at: index)
@@ -194,10 +194,10 @@ class WindowTracker: @unchecked Sendable {
         }
 
         // Fallback: try by ID matching
-        if let windowID = self.windowProvider.getWindowID(for: element) {
+        if let windowID = self.axHelper.getWindowID(element) {
             self.trackedWindowIDs.remove(windowID)
             self.windows.removeAll { window in
-                if let wID = self.windowProvider.getWindowID(for: window), wID == windowID {
+                if let wID = self.axHelper.getWindowID(window), wID == windowID {
                     return true
                 }
                 return false
@@ -236,7 +236,7 @@ class WindowTracker: @unchecked Sendable {
         self.logger.debug("Window created event received")
 
         // Get stable window ID (persists across sleep/wake)
-        guard let windowID = self.windowProvider.getWindowID(for: element) else {
+        guard let windowID = self.axHelper.getWindowID(element) else {
             self.logger.warning("Unable to get window ID for new window")
             return
         }
@@ -322,7 +322,7 @@ class WindowTracker: @unchecked Sendable {
 
                 // Track windows by stable ID (lock held by caller)
                 for window in onCurrentDesktop {
-                    if let windowID = self.windowProvider.getWindowID(for: window) {
+                    if let windowID = self.axHelper.getWindowID(window) {
                         self.trackedWindowIDs.insert(windowID)
                     }
                 }

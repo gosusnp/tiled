@@ -26,11 +26,11 @@ import ApplicationServices
 ///
 /// Dependencies:
 /// - WorkspaceProvider: For accessing running applications
-/// - WindowProvider: For querying window information via Accessibility API
+/// - AccessibilityAPIHelper: For querying window information via Accessibility API
 class WindowPollingService: @unchecked Sendable {
     let logger: Logger
     let workspaceProvider: WorkspaceProvider
-    let windowProvider: WindowProvider
+    let axHelper: AccessibilityAPIHelper
 
     /// Called when polling detects a new window
     var onWindowOpened: ((AXUIElement) -> Void)?
@@ -71,11 +71,11 @@ class WindowPollingService: @unchecked Sendable {
     init(
         logger: Logger,
         workspaceProvider: WorkspaceProvider = RealWorkspaceProvider(),
-        windowProvider: WindowProvider = RealWindowProvider()
+        axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()
     ) {
         self.logger = logger
         self.workspaceProvider = workspaceProvider
-        self.windowProvider = windowProvider
+        self.axHelper = axHelper
     }
 
     deinit {
@@ -176,7 +176,7 @@ class WindowPollingService: @unchecked Sendable {
         // Build map of current windows by CGWindowID (pure state comparison)
         var currentWindowMap: [CGWindowID: AXUIElement] = [:]
         for window in currentWindows {
-            if let windowID = windowProvider.getWindowID(for: window) {
+            if let windowID = axHelper.getWindowID(window) {
                 currentWindowMap[windowID] = window
             }
         }
@@ -221,7 +221,7 @@ class WindowPollingService: @unchecked Sendable {
         for app in workspaceProvider.runningApplications {
             guard app.activationPolicy == .regular && !app.isHidden else { continue }
 
-            let appWindows = windowProvider.getWindowsForApplication(app)
+            let appWindows = axHelper.getWindowsForApplication(app)
             windows += appWindows
         }
 
@@ -242,7 +242,7 @@ class WindowPollingService: @unchecked Sendable {
             return nil
         }
 
-        return windowProvider.getFocusedWindowForApplication(frontmostApp)
+        return axHelper.getFocusedWindowForApplication(frontmostApp)
     }
 
 }

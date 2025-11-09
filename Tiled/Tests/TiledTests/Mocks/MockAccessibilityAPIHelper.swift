@@ -61,6 +61,24 @@ class MockAccessibilityAPIHelper: @preconcurrency AccessibilityAPIHelper {
         isElementValidResult
     }
 
+    // MARK: - Window Discovery
+
+    func getWindowsForApplication(_ app: NSRunningApplication) -> [AXUIElement] {
+        []
+    }
+
+    func getFocusedWindowForApplication(_ app: NSRunningApplication) -> AXUIElement? {
+        nil
+    }
+
+    func getWindowZOrder() -> [[String: Any]]? {
+        nil
+    }
+
+    func isWindowOnCurrentDesktop(_ window: AXUIElement) -> Bool {
+        true
+    }
+
     // MARK: - Test Helpers
 
     func resetCallCounts() {

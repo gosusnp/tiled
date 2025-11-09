@@ -3,25 +3,47 @@
 
 import Cocoa
 
-/// Protocol for Accessibility API interactions.
-/// Enables testing by allowing mocking of AX API calls.
+/// Protocol for Accessibility API interactions and window operations.
+/// Abstracts all AX API calls and window queries/operations for testing and dependency injection.
 protocol AccessibilityAPIHelper {
+    // MARK: - Element Information
+
     /// Extract application PID from an AXUIElement
     func getAppPID(_ element: AXUIElement) -> pid_t?
 
     /// Extract CGWindowID from an AXUIElement by geometry matching
     func getWindowID(_ element: AXUIElement) -> CGWindowID?
 
-    // Extract Window Title from AXUIElement
+    /// Extract Window Title from AXUIElement
     func getWindowTitle(_ element: AXUIElement) -> String
 
     /// Check if an element is still valid
     func isElementValid(_ element: AXUIElement) -> Bool
 
+    // MARK: - Window Discovery
+
+    /// Get all windows for a given application
+    func getWindowsForApplication(_ app: NSRunningApplication) -> [AXUIElement]
+
+    /// Get the focused window of an application
+    func getFocusedWindowForApplication(_ app: NSRunningApplication) -> AXUIElement?
+
+    /// Get the z-index order of windows
+    func getWindowZOrder() -> [[String: Any]]?
+
+    /// Check if a window is on the current desktop (on-screen)
+    /// Returns false for windows on other desktops or minimized
+    func isWindowOnCurrentDesktop(_ window: AXUIElement) -> Bool
+
+    // MARK: - Window Operations
+
+    /// Move the window to a specific position
     func move(_ element: AXUIElement, to: CGPoint) throws
 
+    /// Raise the window to the front and focus it
     func raise(_ element: AXUIElement)
 
+    /// Resize the window to a specific size
     func resize(_ element: AXUIElement, size: CGSize) throws
 }
 
@@ -177,5 +199,63 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
         guard result == .success else {
             throw WindowError.resizeFailed(result)
         }
+    }
+
+    // MARK: - Window Discovery Methods
+
+    func getWindowsForApplication(_ app: NSRunningApplication) -> [AXUIElement] {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        var windowsRef: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
+
+        if result == .success, let windowList = windowsRef as? [AXUIElement] {
+            return windowList
+        }
+        return []
+    }
+
+    func getFocusedWindowForApplication(_ app: NSRunningApplication) -> AXUIElement? {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        var focusedRef: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(
+            appElement,
+            kAXFocusedWindowAttribute as CFString,
+            &focusedRef
+        )
+
+        if result == .success, focusedRef != nil {
+            return focusedRef as! AXUIElement
+        }
+        return nil
+    }
+
+    func getWindowZOrder() -> [[String: Any]]? {
+        return CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]]
+    }
+
+    func isWindowOnCurrentDesktop(_ window: AXUIElement) -> Bool {
+        // Get the window's position
+        var posRef: CFTypeRef?
+        let posResult = AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posRef)
+        guard posResult == .success, let posValue = posRef as! AXValue? else {
+            return false
+        }
+
+        var position = CGPoint.zero
+        AXValueGetValue(posValue, .cgPoint, &position)
+
+        // Get the current screen's visible frame
+        // A window on a different desktop will have coordinates outside any screen's visible area
+        for screen in NSScreen.screens {
+            if screen.visibleFrame.contains(CGPoint(x: position.x + 1, y: position.y + 1)) {
+                // Window's top-left corner is roughly within a screen's visible area
+                return true
+            }
+        }
+
+        return false
     }
 }

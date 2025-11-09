@@ -15,13 +15,13 @@ struct WindowPollingServiceTests {
 
     @Test("Poller only emits closure event once, not on subsequent polls")
     func testClosureEmittedOnceOnly() throws {
-        let mockWindowProvider = TestWindowProvider()
+        let mockAxHelper = TestAccessibilityAPIHelper()
         let mockWorkspaceProvider = TestWorkspaceProvider()
 
         let service = WindowPollingService(
             logger: logger,
             workspaceProvider: mockWorkspaceProvider,
-            windowProvider: mockWindowProvider
+            axHelper: mockAxHelper
         )
 
         var closureEventCount = 0
@@ -30,14 +30,14 @@ struct WindowPollingServiceTests {
         }
 
         let testElement = AXUIElementCreateApplication(getpid())
-        mockWindowProvider.returnWindows = [testElement]
-        mockWindowProvider.windowIDMap[ObjectIdentifier(testElement)] = CGWindowID(888)
+        mockAxHelper.returnWindows = [testElement]
+        mockAxHelper.windowIDMap[ObjectIdentifier(testElement)] = CGWindowID(888)
 
         service.startPolling()
         Thread.sleep(forTimeInterval: 0.1)
 
         // Close window
-        mockWindowProvider.returnWindows = []
+        mockAxHelper.returnWindows = []
         Thread.sleep(forTimeInterval: 0.2)
 
         let eventCountAfterClose = closureEventCount
@@ -52,13 +52,13 @@ struct WindowPollingServiceTests {
 
     @Test("Polling service can be started and stopped")
     func testStartStopPolling() throws {
-        let mockWindowProvider = TestWindowProvider()
+        let mockAxHelper = TestAccessibilityAPIHelper()
         let mockWorkspaceProvider = TestWorkspaceProvider()
 
         let service = WindowPollingService(
             logger: logger,
             workspaceProvider: mockWorkspaceProvider,
-            windowProvider: mockWindowProvider
+            axHelper: mockAxHelper
         )
 
         #expect(!service.isPolling)
@@ -74,13 +74,13 @@ struct WindowPollingServiceTests {
 
     @Test("Poller handles window provider returning no windows")
     func testHandlesEmptyWindowList() throws {
-        let mockWindowProvider = TestWindowProvider()
+        let mockAxHelper = TestAccessibilityAPIHelper()
         let mockWorkspaceProvider = TestWorkspaceProvider()
 
         let service = WindowPollingService(
             logger: logger,
             workspaceProvider: mockWorkspaceProvider,
-            windowProvider: mockWindowProvider
+            axHelper: mockAxHelper
         )
 
         var callCount = 0
@@ -91,7 +91,7 @@ struct WindowPollingServiceTests {
             callCount += 1
         }
 
-        mockWindowProvider.returnWindows = []
+        mockAxHelper.returnWindows = []
 
         service.startPolling()
         Thread.sleep(forTimeInterval: 0.2)
@@ -104,17 +104,17 @@ struct WindowPollingServiceTests {
 
     @Test("Window closure callbacks are optional")
     func testOptionalCallbacks() throws {
-        let mockWindowProvider = TestWindowProvider()
+        let mockAxHelper = TestAccessibilityAPIHelper()
         let mockWorkspaceProvider = TestWorkspaceProvider()
 
         let service = WindowPollingService(
             logger: logger,
             workspaceProvider: mockWorkspaceProvider,
-            windowProvider: mockWindowProvider
+            axHelper: mockAxHelper
         )
 
         // Don't set callbacks - should not crash
-        mockWindowProvider.returnWindows = []
+        mockAxHelper.returnWindows = []
 
         service.startPolling()
         Thread.sleep(forTimeInterval: 0.1)
