@@ -150,7 +150,8 @@ class FrameManager {
         try frame.addWindow(window.windowId, shouldFocus: shouldFocus)
         frameMap[window.windowId] = frame
         try snapWindowToFrame(window.windowId, frame: frame)
-        frame.refreshOverlay()
+        // State change in frame.addWindow() triggers observer; no explicit UI refresh needed.
+        // FrameManager is now decoupled from UI concerns and only manages frame operations.
     }
 
     func registerExistingWindow(_ window: WindowControllerProtocol, windowId: WindowId) {
