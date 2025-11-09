@@ -17,9 +17,12 @@ enum FrameControllerError: Error {
 class FrameController {
     let config: ConfigController
     let styleProvider: StyleProvider
-    private let geometry: FrameGeometry
+    let geometry: FrameGeometry
     let frameWindow: FrameWindowProtocol
     let windowStack: WindowStackController
+    var windowIds: [WindowId] {
+        return self.windowStack.allWindowIds
+    }
     private let windowFactory: FrameWindowFactory
     private let axHelper: AccessibilityAPIHelper
 
@@ -92,11 +95,6 @@ class FrameController {
 
         try self.windowStack.add(windowId, shouldFocus: shouldFocus)
         self.windowMap[windowId] = window
-
-        // resize window to frame size
-        let targetRect = self.geometry.contentRect
-        try window.resize(size: targetRect.size)
-        try window.move(to: targetRect.origin)
     }
 
     func removeWindow(_ windowId: WindowId) -> Bool {
@@ -139,23 +137,12 @@ class FrameController {
     }
 
     /// Move the active window to another frame
-    func moveActiveWindow(to targetFrame: FrameController) throws {
-        guard let activeWindowId = self.windowStack.getActiveWindowId() else { return }
-        guard let window = self.windowMap[activeWindowId] else { return }
+    func moveActiveWindow(to targetFrame: FrameController) throws -> WindowId? {
+        guard let activeWindowId = self.windowStack.getActiveWindowId() else { return nil }
+        guard let window = self.windowMap[activeWindowId] else { return nil }
 
         try self.moveWindow(window, toFrame: targetFrame)
-    }
-
-    /// Raise the active window in this frame
-    func raiseActiveWindow() {
-        // TODO looks like we're no longer doing anything here
-        guard let activeWindowId = self.windowStack.getActiveWindowId() else {
-            self.refreshOverlay()
-            return
-        }
-        // Note: We need the actual WindowController to raise it. This will be resolved when
-        // we refactor to get windows from FrameManager. For now, call refreshOverlay only.
-        self.refreshOverlay()
+        return activeWindowId
     }
 
     func takeWindowsFrom(_ other: FrameController) throws {
@@ -210,9 +197,6 @@ class FrameController {
         guard let parent = self.parent else {
             throw FrameControllerError.cannotCloseRootFrame
         }
-
-        // Get all window IDs to redistribute
-        let windowIdsToMove = self.windowStack.allWindowIds
 
         // Find sibling and index of this frame in parent
         let myIndex = parent.children.firstIndex(where: { $0 === self })

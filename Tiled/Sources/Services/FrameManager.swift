@@ -69,18 +69,23 @@ class FrameManager {
         guard let current = activeFrame else { return }
         let newActive = try current.split(direction: .Horizontal)
         activeFrame = newActive
+        try snapFrameWindows(frame: newActive)
     }
 
     func splitVertically() throws {
         guard let current = activeFrame else { return }
         let newActive = try current.split(direction: .Vertical)
         activeFrame = newActive
+        try snapFrameWindows(frame: newActive)
     }
 
     func closeActiveFrame() throws {
         guard let current = activeFrame else { return }
         let newActive = try current.closeFrame()
         activeFrame = newActive
+        if (newActive != nil) {
+            try snapFrameWindows(frame: newActive!)
+        }
     }
 
     // MARK: - Navigation Operations
@@ -131,7 +136,8 @@ class FrameManager {
         guard let current = activeFrame else { return }
         guard let targetFrame = navigationService.findAdjacentFrame(from: current, direction: direction) else { return }
 
-        try current.moveActiveWindow(to: targetFrame)
+        let windowId = try current.moveActiveWindow(to: targetFrame)
+        try snapWindowToFrame(windowId, frame: targetFrame)
         updateActiveFrame(from: current, to: targetFrame)
     }
 
@@ -141,6 +147,7 @@ class FrameManager {
         guard let frame = activeFrame else { return }
         try frame.addWindow(window, shouldFocus: shouldFocus)
         frameMap[window.windowId] = frame
+        try snapWindowToFrame(window.windowId, frame: frame)
         frame.refreshOverlay()
     }
 
@@ -158,13 +165,39 @@ class FrameManager {
     }
 
     func nextWindow() {
-        let window = activeFrame?.nextWindow().map { windowId in windowControllerMap[windowId.asKey()] }
-        window??.raise()
+        let windowId = activeFrame?.nextWindow()
+        raiseWindow(windowId)
     }
 
     func previousWindow() {
-        let window = activeFrame?.previousWindow().map { windowId in windowControllerMap[windowId.asKey()] }
-        window??.raise()
+        let windowId = activeFrame?.previousWindow()
+        raiseWindow(windowId)
+    }
+
+    // MARK: - Window Operations
+
+    private func snapFrameWindows(frame: FrameController) throws {
+        for windowId in frame.windowIds {
+            try snapWindowToFrame(windowId, frame: frame)
+        }
+    }
+
+    private func snapWindowToFrame(_ windowId: WindowId?, frame: FrameController) throws {
+        guard let window = getWindow(windowId) else { return }
+
+        // resize window to frame size
+        let targetRect = frame.geometry.contentRect
+
+        try window.resize(size: targetRect.size)
+        try window.move(to: targetRect.origin)
+    }
+
+    private func raiseWindow(_ windowId: WindowId?) {
+        getWindow(windowId)?.raise()
+    }
+
+    private func getWindow(_ windowId: WindowId?) -> WindowControllerProtocol? {
+        return windowId.flatMap { id in windowControllerMap[id.asKey()] }
     }
 
     // MARK: - Command Execution
@@ -220,7 +253,6 @@ class FrameManager {
         old?.setActive(false)
         new.setActive(true)
         activeFrame = new
-        new.raiseActiveWindow()
     }
 
     // MARK: - Window Lifecycle Handlers
@@ -263,9 +295,8 @@ class FrameManager {
         frameMap.removeValue(forKey: windowId)
         frame.refreshOverlay()
 
-        // Focus next window if this was active
         if wasActive {
-            frame.raiseActiveWindow()
+            // TODO We should raise the active window again because it changed and may no longer be on top
         }
 
         logger.debug("Window removed from frame")
