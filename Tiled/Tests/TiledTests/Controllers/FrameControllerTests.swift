@@ -360,4 +360,160 @@ struct FrameControllerTests {
         // All windows should be in parent now
         #expect(parent.windowStack.count == 3)
     }
+
+    // MARK: - windowTabs @Published Tests
+
+    @Test("windowTabs publishes empty array on initialization")
+    func testWindowTabsInitiallyEmpty() {
+        let frameController = createFrameController()
+
+        #expect(frameController.windowTabs.isEmpty)
+    }
+
+    @Test("windowTabs publishes when window is added")
+    func testWindowTabsPublishesOnAddWindow() throws {
+        let frameController = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+
+        try frameController.addWindow(window1.windowId)
+
+        #expect(frameController.windowTabs.count == 1)
+        #expect(frameController.windowTabs[0].isActive == true)
+    }
+
+    @Test("windowTabs publishes correct active state when multiple windows added")
+    func testWindowTabsActiveState() throws {
+        let frameController = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try frameController.addWindow(window1.windowId, shouldFocus: false)
+        try frameController.addWindow(window2.windowId, shouldFocus: true)
+
+        #expect(frameController.windowTabs.count == 2)
+        #expect(frameController.windowTabs[0].isActive == false)
+        #expect(frameController.windowTabs[1].isActive == true)
+    }
+
+    @Test("windowTabs publishes when window is removed")
+    func testWindowTabsPublishesOnRemoveWindow() throws {
+        let frameController = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try frameController.addWindow(window1.windowId)
+        try frameController.addWindow(window2.windowId)
+        #expect(frameController.windowTabs.count == 2)
+
+        let removed = frameController.removeWindow(window1.windowId)
+        #expect(removed == true)
+        #expect(frameController.windowTabs.count == 1)
+    }
+
+    @Test("windowTabs updates on nextWindow")
+    func testWindowTabsUpdatesOnNextWindow() throws {
+        let frameController = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try frameController.addWindow(window1.windowId, shouldFocus: true)
+        try frameController.addWindow(window2.windowId, shouldFocus: false)
+
+        #expect(frameController.windowTabs[0].isActive == true)
+        #expect(frameController.windowTabs[1].isActive == false)
+
+        frameController.nextWindow()
+
+        #expect(frameController.windowTabs[0].isActive == false)
+        #expect(frameController.windowTabs[1].isActive == true)
+    }
+
+    @Test("windowTabs updates on previousWindow")
+    func testWindowTabsUpdatesOnPreviousWindow() throws {
+        let frameController = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try frameController.addWindow(window1.windowId, shouldFocus: true)
+        try frameController.addWindow(window2.windowId, shouldFocus: false)
+
+        frameController.nextWindow()
+        #expect(frameController.windowTabs[1].isActive == true)
+
+        frameController.previousWindow()
+
+        #expect(frameController.windowTabs[0].isActive == true)
+        #expect(frameController.windowTabs[1].isActive == false)
+    }
+
+    @Test("windowTabs becomes empty when frame is split")
+    func testWindowTabsEmptiesOnSplit() throws {
+        let frameController = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+
+        try frameController.addWindow(window1.windowId)
+        #expect(frameController.windowTabs.count == 1)
+
+        let child1 = try frameController.split(direction: .Vertical)
+
+        // Parent becomes non-leaf, so its tabs should be empty
+        #expect(frameController.windowTabs.isEmpty)
+        // Child1 receives the window, so it should have tabs
+        #expect(child1.windowTabs.count == 1)
+    }
+
+    @Test("windowTabs empties on split and becomes non-leaf")
+    func testWindowTabsEmptyOnNonLeaf() throws {
+        let parent = createFrameController()
+        let window1 = MockWindowController(title: "Window 1")
+
+        try parent.addWindow(window1.windowId)
+        #expect(parent.windowTabs.count == 1)
+
+        // After split, parent becomes non-leaf and tabs should be empty
+        let child1 = try parent.split(direction: .Horizontal)
+        #expect(parent.windowTabs.isEmpty)
+        #expect(child1.windowTabs.count == 1)
+    }
+
+    @Test("windowTabs updates when window is moved between frames")
+    func testWindowTabsUpdatesOnMoveWindow() throws {
+        let parent = createFrameController()
+        let child1 = try parent.split(direction: .Vertical)
+        let child2 = parent.children[1]
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try child1.addWindow(window1.windowId)
+        try child1.addWindow(window2.windowId)
+        #expect(child1.windowTabs.count == 2)
+        #expect(child2.windowTabs.isEmpty)
+
+        try child1.moveWindow(window1.windowId, toFrame: child2)
+
+        // After move: child1 should have 1 window, child2 should have 1 window
+        #expect(child1.windowTabs.count == 1)
+        #expect(child2.windowTabs.count == 1)
+    }
+
+    @Test("windowTabs updates when windows are transferred via takeWindowsFrom")
+    func testWindowTabsUpdatesOnTakeWindowsFrom() throws {
+        let sourceFrame = createFrameController()
+        let targetFrame = createFrameController()
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try sourceFrame.addWindow(window1.windowId)
+        try sourceFrame.addWindow(window2.windowId)
+        #expect(sourceFrame.windowTabs.count == 2)
+        #expect(targetFrame.windowTabs.isEmpty)
+
+        try targetFrame.takeWindowsFrom(sourceFrame)
+
+        // After takeAll: source should be empty, target should have both
+        #expect(sourceFrame.windowTabs.isEmpty)
+        #expect(targetFrame.windowTabs.count == 2)
+    }
 }

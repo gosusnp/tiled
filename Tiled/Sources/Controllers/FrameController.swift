@@ -3,6 +3,7 @@
 
 import Cocoa
 import ApplicationServices
+import Combine
 
 // MARK: - Error Types
 
@@ -31,9 +32,33 @@ class FrameController {
     var splitDirection: Direction? = nil  // The direction this frame was split (if it has children)
     private var isActive: Bool = false
 
+    @Published var windowTabs: [WindowTab] = []
+
     func setActive(_ isActive: Bool) {
         self.isActive = isActive
         self.frameWindow.setActive(isActive)
+    }
+
+    /// Compute current window tabs based on frame hierarchy
+    /// For leaf frames: returns tabs with window titles
+    /// For non-leaf frames: returns empty array (children own the display)
+    private func computeWindowTabs() -> [WindowTab] {
+        if self.children.isEmpty {
+            // Leaf frame: convert WindowIds to WindowTabs for UI rendering
+            return self.windowStack.tabs.enumerated().map { (index, windowId) in
+                let isActive = index == self.windowStack.activeIndex
+                let title = windowId.getCurrentElement().map{ (element) in axHelper.getWindowTitle(element) } ?? "Unknown"
+                return WindowTab(title: title, isActive: isActive)
+            }
+        } else {
+            // Non-leaf frame: children own the display
+            return []
+        }
+    }
+
+    /// Update the published windowTabs property based on current state
+    private func updateWindowTabs() {
+        self.windowTabs = computeWindowTabs()
     }
 
     /// Public initializer for production use
@@ -88,20 +113,27 @@ class FrameController {
 
     func addWindow(_ windowId: WindowId, shouldFocus: Bool = false) throws {
         try self.windowStack.add(windowId, shouldFocus: shouldFocus)
+        self.updateWindowTabs()
     }
 
     func removeWindow(_ windowId: WindowId) -> Bool {
-        return self.windowStack.remove(windowId)
+        let wasRemoved = self.windowStack.remove(windowId)
+        if wasRemoved {
+            self.updateWindowTabs()
+        }
+        return wasRemoved
     }
 
     func nextWindow() -> WindowId? {
         let windowId = self.windowStack.nextWindow()
+        self.updateWindowTabs()
         self.refreshOverlay()
         return windowId
     }
 
     func previousWindow() -> WindowId? {
         let windowId = self.windowStack.previousWindow()
+        self.updateWindowTabs()
         self.refreshOverlay()
         return windowId
     }
@@ -112,7 +144,7 @@ class FrameController {
             return
         }
 
-        // Add to target frame
+        // Add to target frame (which will call updateWindowTabs)
         try targetFrame.addWindow(windowId, shouldFocus: true)
 
         // Refresh both frames
@@ -136,6 +168,10 @@ class FrameController {
     func takeWindowsFrom(_ other: FrameController) throws {
         // Transfer windows to this frame's stack
         try self.windowStack.takeAll(from: other.windowStack)
+        self.updateWindowTabs()
+
+        // Source frame's windows were transferred, so update its tabs
+        other.updateWindowTabs()
 
         // TODO: After refactoring, we need to:
         // 1. Update frame references for transferred windows (via FrameManager.frameMap)
@@ -166,6 +202,9 @@ class FrameController {
 
         // Hide parent frame's window since children now own the space
         self.frameWindow.hide()
+
+        // Parent is now non-leaf, so its tabs should be empty
+        self.updateWindowTabs()
 
         self.refreshOverlay()
         return child1
