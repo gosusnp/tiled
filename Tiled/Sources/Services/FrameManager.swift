@@ -158,11 +158,13 @@ class FrameManager {
     }
 
     func nextWindow() {
-        activeFrame?.nextWindow()
+        let window = activeFrame?.nextWindow().map { windowId in windowControllerMap[windowId.asKey()] }
+        window??.raise()
     }
 
     func previousWindow() {
-        activeFrame?.previousWindow()
+        let window = activeFrame?.previousWindow().map { windowId in windowControllerMap[windowId.asKey()] }
+        window??.raise()
     }
 
     // MARK: - Command Execution

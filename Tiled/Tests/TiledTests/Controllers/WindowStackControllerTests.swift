@@ -67,16 +67,21 @@ struct WindowStackControllerTests {
         #expect(stack.activeIndex == 0)
         #expect(stack.getActiveWindowId() === windowId1)
 
-        stack.nextWindow()
+        var actualWindowId: WindowId?
+
+        actualWindowId = stack.nextWindow()
+        #expect(actualWindowId == windowId2)
         #expect(stack.activeIndex == 1)
         #expect(stack.getActiveWindowId() === windowId2)
 
-        stack.nextWindow()
+        actualWindowId = stack.nextWindow()
+        #expect(actualWindowId == windowId3)
         #expect(stack.activeIndex == 2)
         #expect(stack.getActiveWindowId() === windowId3)
 
         // Wraps around
-        stack.nextWindow()
+        actualWindowId = stack.nextWindow()
+        #expect(actualWindowId == windowId1)
         #expect(stack.activeIndex == 0)
         #expect(stack.getActiveWindowId() === windowId1)
     }
@@ -94,15 +99,20 @@ struct WindowStackControllerTests {
 
         #expect(stack.activeIndex == 0)
 
-        stack.previousWindow()
+        var actualWindowId: WindowId?
+
+        actualWindowId = stack.previousWindow()
+        #expect(actualWindowId == windowId3)
         #expect(stack.activeIndex == 2)
         #expect(stack.getActiveWindowId() === windowId3)
 
-        stack.previousWindow()
+        actualWindowId = stack.previousWindow()
+        #expect(actualWindowId == windowId2)
         #expect(stack.activeIndex == 1)
         #expect(stack.getActiveWindowId() === windowId2)
 
-        stack.previousWindow()
+        actualWindowId = stack.previousWindow()
+        #expect(actualWindowId == windowId1)
         #expect(stack.activeIndex == 0)
         #expect(stack.getActiveWindowId() === windowId1)
     }

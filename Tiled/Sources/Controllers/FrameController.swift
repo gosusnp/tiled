@@ -109,14 +109,16 @@ class FrameController {
         return removed
     }
 
-    func nextWindow() {
-        self.windowStack.nextWindow()
+    func nextWindow() -> WindowId? {
+        let windowId = self.windowStack.nextWindow()
         self.refreshOverlay()
+        return windowId
     }
 
-    func previousWindow() {
-        self.windowStack.previousWindow()
+    func previousWindow() -> WindowId? {
+        let windowId = self.windowStack.previousWindow()
         self.refreshOverlay()
+        return windowId
     }
 
     func moveWindow(_ window: WindowControllerProtocol, toFrame targetFrame: FrameController) throws {
