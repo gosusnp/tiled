@@ -648,6 +648,127 @@ struct FrameManagerTests {
         #expect(result == nil)
     }
 
+    @Test("frameMap tracks window assignment to frame")
+    func testFrameMapTracksWindowAssignment() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+
+        // Before assignment, frameMap should not contain window
+        var foundFrame = frameManager.frameContaining(window.windowId)
+        #expect(foundFrame == nil)
+
+        // Assign window to active frame
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // After assignment, frameMap should contain window→frame mapping
+        foundFrame = frameManager.frameContaining(window.windowId)
+        #expect(foundFrame === frameManager.activeFrame, "frameMap should track window assignment to active frame")
+    }
+
+    @Test("frameMap is maintained correctly across frame assignments")
+    func testFrameMapMaintenanceAcrossAssignments() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        guard let rootFrame = frameManager.rootFrame else { return }
+
+        // Add first window
+        let window1 = MockWindowController(title: "Window 1")
+        frameManager.registerExistingWindow(window1, windowId: window1.windowId)
+        try frameManager.assignWindow(window1, shouldFocus: false)
+
+        var foundFrame = frameManager.frameContaining(window1.windowId)
+        #expect(foundFrame === rootFrame, "window1 should be in rootFrame after assignment")
+
+        // Split and add second window to new frame
+        try frameManager.splitHorizontally()
+        let leftChild = frameManager.activeFrame
+        let rightChild = rootFrame.children[1]
+
+        let window2 = MockWindowController(title: "Window 2")
+        frameManager.registerExistingWindow(window2, windowId: window2.windowId)
+        try frameManager.assignWindow(window2, shouldFocus: false)
+
+        // Verify frameMap correctly maps both windows
+        foundFrame = frameManager.frameContaining(window1.windowId)
+        #expect(foundFrame === rootFrame, "window1 should still be in rootFrame")
+
+        foundFrame = frameManager.frameContaining(window2.windowId)
+        #expect(foundFrame === leftChild, "window2 should be in leftChild after assignment")
+    }
+
+    @Test("frameMap cleaned up when window disappears")
+    func testFrameMapCleanedUpOnWindowDisappear() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+
+        // Assign window
+        try frameManager.assignWindow(window, shouldFocus: false)
+        var foundFrame = frameManager.frameContaining(window.windowId)
+        #expect(foundFrame != nil, "Window should be in frameMap after assignment")
+
+        // Unregister window (simulates the cleanup that happens in handleWindowDisappeared)
+        frameManager.unregisterWindow(windowId: window.windowId)
+
+        // Verify frameMap is cleaned up
+        foundFrame = frameManager.frameContaining(window.windowId)
+        #expect(foundFrame == nil, "frameMap should be cleaned up after unregisterWindow")
+    }
+
+    @Test("frameMap consistent with frame ownership")
+    func testFrameMapConsistentWithFrameOwnership() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = createFrameController(testFrame)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let root = frameManager.rootFrame else { return }
+
+        // Create 3-way split: root → (left, right), left → (topLeft, bottomLeft)
+        let rightChild = try root.split(direction: .Horizontal)
+        let leftChild = root.children[0]
+
+        let bottomLeft = try leftChild.split(direction: .Vertical)
+        let topLeft = leftChild.children[0]
+
+        // Add windows to different frames
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        frameManager.registerExistingWindow(window1, windowId: window1.windowId)
+        frameManager.registerExistingWindow(window2, windowId: window2.windowId)
+        frameManager.registerExistingWindow(window3, windowId: window3.windowId)
+
+        frameManager.activeFrame = topLeft
+        try frameManager.assignWindow(window1, shouldFocus: false)
+
+        frameManager.activeFrame = bottomLeft
+        try frameManager.assignWindow(window2, shouldFocus: false)
+
+        frameManager.activeFrame = rightChild
+        try frameManager.assignWindow(window3, shouldFocus: false)
+
+        // Verify frameMap is consistent with actual ownership
+        #expect(frameManager.frameContaining(window1.windowId) === topLeft, "window1 should map to topLeft")
+        #expect(frameManager.frameContaining(window2.windowId) === bottomLeft, "window2 should map to bottomLeft")
+        #expect(frameManager.frameContaining(window3.windowId) === rightChild, "window3 should map to rightChild")
+
+        // Verify each frame's windowStack is consistent
+        #expect(topLeft.windowIds.contains(window1.windowId), "topLeft should contain window1")
+        #expect(bottomLeft.windowIds.contains(window2.windowId), "bottomLeft should contain window2")
+        #expect(rightChild.windowIds.contains(window3.windowId), "rightChild should contain window3")
+    }
+
     // MARK: - Window Positioning Tests
 
     @Test("assignWindow positions window in frame")
@@ -665,5 +786,66 @@ struct FrameManagerTests {
         // Window should have been resized and moved
         #expect(window.resizeCallCount > 0, "Window should be resized when assigned to frame")
         #expect(window.moveCallCount > 0, "Window should be moved when assigned to frame")
+    }
+
+    // MARK: - Stale WindowId Handling Tests
+
+    @Test("frameContaining returns nil for unregistered WindowId")
+    func testFrameContainingHandlesUnregisteredWindowId() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        let mockRegistry = MockWindowRegistry()
+        let staleWindowId = WindowId(appPID: 9999, registry: mockRegistry)
+
+        // Attempt to find frame for unregistered window should return nil gracefully
+        let foundFrame = frameManager.frameContaining(staleWindowId)
+        #expect(foundFrame == nil, "frameContaining should return nil for unregistered WindowId")
+    }
+
+    @Test("windowControllerMap handles missing windows gracefully")
+    func testSnappingStaleWindowIdHandledGracefully() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        // Create a WindowId that was never registered
+        let mockRegistry = MockWindowRegistry()
+        let staleWindowId = WindowId(appPID: 8888, registry: mockRegistry)
+
+        // Attempting to snap a stale WindowId should not crash
+        // This simulates what happens in moveActiveWindow if windowId becomes stale
+        frameManager.registerExistingWindow(
+            MockWindowController(title: "Dummy"),
+            windowId: staleWindowId
+        )
+
+        // Now unregister it to make it stale
+        frameManager.unregisterWindow(windowId: staleWindowId)
+
+        // frameContaining should still work (returns nil)
+        let foundFrame = frameManager.frameContaining(staleWindowId)
+        #expect(foundFrame == nil, "frameContaining should return nil after unregistration")
+    }
+
+    @Test("unregisterWindow cleans up all references")
+    func testUnregisterWindowCleansUpAllReferences() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // Verify window is tracked
+        #expect(frameManager.frameContaining(window.windowId) != nil, "Window should be in frameMap")
+
+        // Unregister the window
+        frameManager.unregisterWindow(windowId: window.windowId)
+
+        // Verify all references are cleaned up
+        #expect(frameManager.frameContaining(window.windowId) == nil, "Window should be removed from frameMap")
     }
 }

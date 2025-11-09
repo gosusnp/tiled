@@ -136,8 +136,10 @@ class FrameManager {
         guard let current = activeFrame else { return }
         guard let targetFrame = navigationService.findAdjacentFrame(from: current, direction: direction) else { return }
 
-        let windowId = try current.moveActiveWindow(to: targetFrame)
+        guard let windowId = try current.moveActiveWindow(to: targetFrame) else { return }
         try snapWindowToFrame(windowId, frame: targetFrame)
+        // Update frameMap to reflect window move to new frame
+        frameMap[windowId] = targetFrame
         updateActiveFrame(from: current, to: targetFrame)
     }
 
