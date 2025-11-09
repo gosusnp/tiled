@@ -26,9 +26,6 @@ class FrameController {
     private let windowFactory: FrameWindowFactory
     private let axHelper: AccessibilityAPIHelper
 
-    // Map WindowId to WindowControllerProtocol for operations that need the controller
-    private var windowMap: [WindowId: WindowControllerProtocol] = [:]
-
     var children: [FrameController] = []
     weak var parent: FrameController? = nil
     var splitDirection: Direction? = nil  // The direction this frame was split (if it has children)
@@ -89,20 +86,12 @@ class FrameController {
         }
     }
 
-    func addWindow(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
-        // Get WindowId from the window controller
-        let windowId = window.windowId
-
+    func addWindow(_ windowId: WindowId, shouldFocus: Bool = false) throws {
         try self.windowStack.add(windowId, shouldFocus: shouldFocus)
-        self.windowMap[windowId] = window
     }
 
     func removeWindow(_ windowId: WindowId) -> Bool {
-        let removed = self.windowStack.remove(windowId)
-        if removed {
-            self.windowMap.removeValue(forKey: windowId)
-        }
-        return removed
+        return self.windowStack.remove(windowId)
     }
 
     func nextWindow() -> WindowId? {
@@ -117,14 +106,14 @@ class FrameController {
         return windowId
     }
 
-    func moveWindow(_ window: WindowControllerProtocol, toFrame targetFrame: FrameController) throws {
+    func moveWindow(_ windowId: WindowId, toFrame targetFrame: FrameController) throws {
         // Remove from source frame
-        guard self.removeWindow(window.windowId) else {
+        guard self.removeWindow(windowId) else {
             return
         }
 
         // Add to target frame
-        try targetFrame.addWindow(window, shouldFocus: true)
+        try targetFrame.addWindow(windowId, shouldFocus: true)
 
         // Refresh both frames
         self.refreshOverlay()
@@ -139,9 +128,8 @@ class FrameController {
     /// Move the active window to another frame
     func moveActiveWindow(to targetFrame: FrameController) throws -> WindowId? {
         guard let activeWindowId = self.windowStack.getActiveWindowId() else { return nil }
-        guard let window = self.windowMap[activeWindowId] else { return nil }
 
-        try self.moveWindow(window, toFrame: targetFrame)
+        try self.moveWindow(activeWindowId, toFrame: targetFrame)
         return activeWindowId
     }
 
@@ -149,14 +137,8 @@ class FrameController {
         // Transfer windows to this frame's stack
         try self.windowStack.takeAll(from: other.windowStack)
 
-        // Transfer window references from other frame's windowMap
-        for (windowId, window) in other.windowMap {
-            self.windowMap[windowId] = window
-        }
-        other.windowMap.removeAll()
-
         // TODO: After refactoring, we need to:
-        // 1. Update frame references for transferred windows
+        // 1. Update frame references for transferred windows (via FrameManager.frameMap)
         // 2. Reposition all windows to fit this frame
     }
 

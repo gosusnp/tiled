@@ -145,7 +145,7 @@ class FrameManager {
 
     func assignWindow(_ window: WindowControllerProtocol, shouldFocus: Bool = false) throws {
         guard let frame = activeFrame else { return }
-        try frame.addWindow(window, shouldFocus: shouldFocus)
+        try frame.addWindow(window.windowId, shouldFocus: shouldFocus)
         frameMap[window.windowId] = frame
         try snapWindowToFrame(window.windowId, frame: frame)
         frame.refreshOverlay()
@@ -232,7 +232,7 @@ class FrameManager {
             previousWindow()
         case .addWindow(let window):
             guard let frame = activeFrame else { return }
-            try frame.addWindow(window, shouldFocus: false)
+            try frame.addWindow(window.windowId, shouldFocus: false)
             frame.refreshOverlay()
         case .removeWindow(let window):
             let _ = activeFrame?.removeWindow(window.windowId)
@@ -269,7 +269,7 @@ class FrameManager {
         }
 
         do {
-            try frame.addWindow(window, shouldFocus: true)
+            try frame.addWindow(windowId, shouldFocus: true)
             // Update frameMap to track window→frame relationship
             frameMap[windowId] = frame
             frame.refreshOverlay()

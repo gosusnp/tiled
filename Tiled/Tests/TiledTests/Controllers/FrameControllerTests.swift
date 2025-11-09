@@ -36,8 +36,8 @@ struct FrameControllerTests {
         // Add windows through frameController (handles WindowId conversion)
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
-        try frameController.addWindow(window1)
-        try frameController.addWindow(window2)
+        try frameController.addWindow(window1.windowId)
+        try frameController.addWindow(window2.windowId)
 
         // Before cycling, window1 is active
         #expect(!window1.raiseWasCalled)
@@ -54,8 +54,8 @@ struct FrameControllerTests {
         // Add windows through frameController
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
-        try frameController.addWindow(window1)
-        try frameController.addWindow(window2)
+        try frameController.addWindow(window1.windowId)
+        try frameController.addWindow(window2.windowId)
 
         // Start at window1, cycle back to window2
         frameController.previousWindow()
@@ -97,9 +97,9 @@ struct FrameControllerTests {
         let window3 = MockWindowController(title: "Window 3")
 
         // Add windows through frameController
-        try frameController.addWindow(window1)
-        try frameController.addWindow(window2)
-        try frameController.addWindow(window3)
+        try frameController.addWindow(window1.windowId)
+        try frameController.addWindow(window2.windowId)
+        try frameController.addWindow(window3.windowId)
 
         // Navigate to second window
         frameController.nextWindow()
@@ -116,7 +116,7 @@ struct FrameControllerTests {
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
-        try frameController.addWindow(window1)
+        try frameController.addWindow(window1.windowId)
 
         // Try to remove a window that was never added
         let removed = frameController.removeWindow(window2.windowId)
@@ -132,8 +132,8 @@ struct FrameControllerTests {
         let window2 = MockWindowController(title: "Window 2")
 
         // Add windows to frame1
-        try frame1.addWindow(window1)
-        try frame1.addWindow(window2)
+        try frame1.addWindow(window1.windowId)
+        try frame1.addWindow(window2.windowId)
 
         // Manually transfer windows (takeWindowsFrom is incomplete in current refactoring)
         try frame2.windowStack.takeAll(from: frame1.windowStack)
@@ -150,7 +150,7 @@ struct FrameControllerTests {
         let rootFrame = createFrameController()
         let window = MockWindowController(title: "Window 1")
 
-        try rootFrame.addWindow(window)
+        try rootFrame.addWindow(window.windowId)
 
         // Try to close root frame - should throw
         var threwError = false
@@ -226,13 +226,13 @@ struct FrameControllerTests {
         let child2 = parent.children[1]
 
         let window = MockWindowController(title: "Window 1")
-        try child1.addWindow(window)
+        try child1.addWindow(window.windowId)
 
         #expect(child1.windowStack.count == 1)
         #expect(child2.windowStack.count == 0)
 
         // Move window from child1 to child2
-        try child1.moveWindow(window, toFrame: child2)
+        try child1.moveWindow(window.windowId, toFrame: child2)
 
         // Window should be removed from source
         #expect(child1.windowStack.count == 0)
@@ -245,10 +245,10 @@ struct FrameControllerTests {
         let child2 = parent.children[1]
 
         let window = MockWindowController(title: "Window 1")
-        try child1.addWindow(window)
+        try child1.addWindow(window.windowId)
 
         // Move window from child1 to child2
-        try child1.moveWindow(window, toFrame: child2)
+        try child1.moveWindow(window.windowId, toFrame: child2)
 
         // Window should be added to target
         #expect(child2.windowStack.count == 1)
@@ -263,13 +263,13 @@ struct FrameControllerTests {
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
-        try child1.addWindow(window1)
-        try child2.addWindow(window2)
+        try child1.addWindow(window1.windowId)
+        try child2.addWindow(window2.windowId)
 
         #expect(child2.windowStack.count == 1)
 
         // Move window1 to child2
-        try child1.moveWindow(window1, toFrame: child2)
+        try child1.moveWindow(window1.windowId, toFrame: child2)
 
         // window1 should be added to child2
         #expect(child2.windowStack.count == 2)
@@ -285,14 +285,14 @@ struct FrameControllerTests {
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
 
-        try child1.addWindow(window1)
-        try child1.addWindow(window2)
-        try child1.addWindow(window3)
+        try child1.addWindow(window1.windowId)
+        try child1.addWindow(window2.windowId)
+        try child1.addWindow(window3.windowId)
 
         #expect(child1.windowStack.count == 3)
 
         // Move only window2
-        try child1.moveWindow(window2, toFrame: child2)
+        try child1.moveWindow(window2.windowId, toFrame: child2)
 
         // Source should have 2 remaining
         #expect(child1.windowStack.count == 2)
@@ -310,13 +310,13 @@ struct FrameControllerTests {
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
-        try child1.addWindow(window1)
-        try child1.addWindow(window2)
+        try child1.addWindow(window1.windowId)
+        try child1.addWindow(window2.windowId)
 
         #expect(child1.windowStack.count == 2)
 
         // Move active window
-        try child1.moveWindow(window1, toFrame: child2)
+        try child1.moveWindow(window1.windowId, toFrame: child2)
 
         // window1 should be removed from child1
         #expect(child1.windowStack.count == 1)
@@ -335,9 +335,9 @@ struct FrameControllerTests {
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
 
-        try child1.addWindow(window1)
-        try child2.addWindow(window2)
-        try child2.addWindow(window3)
+        try child1.addWindow(window1.windowId)
+        try child2.addWindow(window2.windowId)
+        try child2.addWindow(window3.windowId)
 
         #expect(parent.children.count == 2)
         #expect(child1.windowStack.count == 1)

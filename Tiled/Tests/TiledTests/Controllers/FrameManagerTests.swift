@@ -455,7 +455,7 @@ struct FrameManagerTests {
 
         // Add window to right child
         let window = MockWindowController(title: "Test Window")
-        try rightChild.addWindow(window)
+        try rightChild.addWindow(window.windowId)
 
         // Make right child active
         frameManager.activeFrame = rightChild
@@ -493,7 +493,7 @@ struct FrameManagerTests {
 
         // Add window to left child
         let window = MockWindowController(title: "Test Window")
-        try leftChild.addWindow(window)
+        try leftChild.addWindow(window.windowId)
 
         // Make left child active (it already is from split)
         #expect(frameManager.activeFrame === leftChild)
@@ -529,7 +529,7 @@ struct FrameManagerTests {
 
         // Add window to bottom child
         let window = MockWindowController(title: "Test Window")
-        try bottomChild.addWindow(window)
+        try bottomChild.addWindow(window.windowId)
 
         // Make bottom child active
         frameManager.activeFrame = bottomChild
@@ -567,7 +567,7 @@ struct FrameManagerTests {
 
         // Add window to top child
         let window = MockWindowController(title: "Test Window")
-        try topChild.addWindow(window)
+        try topChild.addWindow(window.windowId)
 
         // Make top child active (it already is from split)
         #expect(frameManager.activeFrame === topChild)
@@ -603,7 +603,7 @@ struct FrameManagerTests {
 
         // Add window to left child
         let window = MockWindowController(title: "Test Window")
-        try leftChild.addWindow(window)
+        try leftChild.addWindow(window.windowId)
 
         #expect(leftChild.windowStack.count == 1)
         #expect(rightChild.windowStack.count == 0)
