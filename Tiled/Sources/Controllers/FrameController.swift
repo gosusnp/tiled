@@ -245,12 +245,20 @@ class FrameController {
         let sibling = parent.children[myIndex == 0 ? 1 : 0]
 
         // Normal case: binary tree with 2 children
+        // Transfer windows first without updating tabs (children still exist)
         try parent.takeWindowsFrom(self)
         try parent.takeWindowsFrom(sibling)
 
-        // Remove all children from parent (it's no longer split)
+        // Remove all children from parent BEFORE updating tabs.
+        // This is critical: updateWindowTabs() checks children.isEmpty to decide
+        // whether to return tabs (leaf) or empty array (non-leaf).
+        // We must clear children before calling updateWindowTabs() so the parent
+        // transitions from non-leaf back to leaf state with populated tabs.
         parent.children.removeAll()
         parent.splitDirection = nil
+
+        // Now that parent is a leaf again, update tabs to show consolidated windows
+        parent.updateWindowTabs()
 
         // Show parent frame and set active
         parent.frameWindow.show()
@@ -286,19 +294,21 @@ class FrameController {
             }
         }
 
-        // Remove all children from parent (including self) and reset split state
-        // This properly closes all frames and returns tree to leaf state
+        // Remove all children from parent (including self) and reset split state.
+        // Like in closeFrame(), we must clear children BEFORE updating tabs so the
+        // parent transitions to leaf state with the consolidated windows visible.
         parent.children.removeAll()
         parent.splitDirection = nil
 
         // Clear self's parent reference to fully detach
         self.parent = nil
 
+        // Now that parent is a leaf again, update tabs to show consolidated windows
+        parent.updateWindowTabs()
+
         // Show parent frame and set as active
         parent.frameWindow.show()
         parent.setActive(true)
-
-        // Parent's state was updated by takeWindowsFrom(). Observer automatically syncs the UI.
 
         return parent
     }

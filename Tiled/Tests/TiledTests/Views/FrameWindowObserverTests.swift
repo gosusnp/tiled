@@ -205,4 +205,35 @@ struct FrameWindowObserverTests {
         #expect(child1.windowTabs.count == 2)  // Child1 has windows
         #expect(child2.windowTabs.isEmpty)  // Child2 is empty
     }
+
+    @Test("Observer updates parent tabs when child frame closes")
+    func testObserverUpdatesParentWhenChildCloses() throws {
+        let parent = createFrameController()
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+
+        try parent.addWindow(window1.windowId)
+        try parent.addWindow(window2.windowId)
+
+        // Parent starts with 2 tabs
+        #expect(parent.windowTabs.count == 2)
+
+        // Split: child1 gets all windows
+        let child1 = try parent.split(direction: .Horizontal)
+        let child2 = parent.children[1]
+
+        // Parent becomes non-leaf (empty tabs)
+        #expect(parent.windowTabs.isEmpty)
+        #expect(child1.windowTabs.count == 2)
+        #expect(child2.windowTabs.isEmpty)
+
+        // Close child1 - consolidates windows back to parent
+        _ = try child1.closeFrame()
+
+        // Observer should have updated parent's tabs - should show consolidated windows
+        // This is the bug: parent.windowTabs should be populated but remains empty
+        #expect(parent.windowTabs.count == 2, "Parent should show consolidated windows after child closes")
+        #expect(!parent.children.isEmpty == false, "Parent should be leaf after close")
+    }
 }
