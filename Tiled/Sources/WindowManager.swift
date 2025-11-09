@@ -85,6 +85,9 @@ class WindowManager {
                 return
             }
             self.frameManager?.enqueueCommand(.windowDisappeared(windowId))
+            // Unregister from registry to invalidate the WindowId and trigger cleanup.
+            // This ensures stale WindowIds don't linger in frames with "Unknown" tabs.
+            self.registry.unregister(windowId)
         }
     }
 

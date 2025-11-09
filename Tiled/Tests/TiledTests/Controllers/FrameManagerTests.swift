@@ -950,4 +950,39 @@ struct FrameManagerTests {
         #expect(child1.windowIds.count == 1, "child1 should have 1 window left")
         #expect(child1.windowIds.contains(window2.windowId), "window2 should still be there")
     }
+
+    @Test("Closed window is properly removed and doesn't leave stale tabs")
+    func testWindowRemovalCleansUpTabs() throws {
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let frame = createFrameController(testFrame)
+
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        let window3 = MockWindowController(title: "Window 3")
+
+        // Add three windows to frame
+        try frame.addWindow(window1.windowId, shouldFocus: true)
+        try frame.addWindow(window2.windowId, shouldFocus: false)
+        try frame.addWindow(window3.windowId, shouldFocus: false)
+        #expect(frame.windowIds.count == 3, "Should have 3 windows added")
+        #expect(frame.windowTabs.count == 3, "Should have 3 tabs")
+
+        // Remove first window (simulating it closing)
+        let wasRemoved = frame.removeWindow(window1.windowId)
+        #expect(wasRemoved == true, "Window should be removed successfully")
+        #expect(frame.windowIds.count == 2, "Should have 2 windows after removal")
+        #expect(frame.windowTabs.count == 2, "Should have 2 tabs after removal")
+
+        // Verify the removed window is no longer in the frame
+        #expect(!frame.windowIds.contains(window1.windowId), "Removed window should not be in frame")
+        #expect(frame.windowIds.contains(window2.windowId), "Window 2 should still be there")
+        #expect(frame.windowIds.contains(window3.windowId), "Window 3 should still be there")
+
+        // Remove another window
+        let wasRemoved2 = frame.removeWindow(window2.windowId)
+        #expect(wasRemoved2 == true, "Second window should be removed")
+        #expect(frame.windowIds.count == 1, "Should have 1 window left")
+        #expect(frame.windowTabs.count == 1, "Should have 1 tab left")
+        #expect(frame.windowIds.contains(window3.windowId), "Window 3 should be the only one left")
+    }
 }
