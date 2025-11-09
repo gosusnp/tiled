@@ -105,7 +105,7 @@ struct FrameControllerTests {
         frameController.nextWindow()
 
         // Remove the active window
-        let removed = frameController.removeWindow(window2)
+        let removed = frameController.removeWindow(window2.windowId)
         #expect(removed)
         #expect(frameController.windowStack.count == 2)
     }
@@ -119,7 +119,7 @@ struct FrameControllerTests {
         try frameController.addWindow(window1)
 
         // Try to remove a window that was never added
-        let removed = frameController.removeWindow(window2)
+        let removed = frameController.removeWindow(window2.windowId)
         #expect(!removed)
         #expect(frameController.windowStack.count == 1)
     }

@@ -202,7 +202,7 @@ class FrameManager {
             try frame.addWindow(window, shouldFocus: false)
             frame.refreshOverlay()
         case .removeWindow(let window):
-            let _ = activeFrame?.removeWindow(window)
+            let _ = activeFrame?.removeWindow(window.windowId)
             activeFrame?.refreshOverlay()
         case .focusWindow(let window):
             // TODO Implement
@@ -263,7 +263,7 @@ class FrameManager {
         let wasActive = frame.isActiveWindow(windowController)
 
         // Remove from frame
-        frame.removeWindow(windowController)
+        frame.removeWindow(windowId)
         windowControllerMap.removeValue(forKey: windowId.asKey())
         frameMap.removeValue(forKey: windowId)
         frame.refreshOverlay()

@@ -99,9 +99,7 @@ class FrameController {
         try window.move(to: targetRect.origin)
     }
 
-    func removeWindow(_ window: WindowControllerProtocol) -> Bool {
-        let windowId = window.windowId
-
+    func removeWindow(_ windowId: WindowId) -> Bool {
         let removed = self.windowStack.remove(windowId)
         if removed {
             self.windowMap.removeValue(forKey: windowId)
@@ -123,7 +121,7 @@ class FrameController {
 
     func moveWindow(_ window: WindowControllerProtocol, toFrame targetFrame: FrameController) throws {
         // Remove from source frame
-        guard self.removeWindow(window) else {
+        guard self.removeWindow(window.windowId) else {
             return
         }
 
