@@ -26,6 +26,8 @@ reference. This was problematic because... [long explanation]"
 
 Follow `docs/CODING_STANDARDS.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN_PRINCIPLES.md`.
 
+**Code comments:** Explain *why* and *what matters*, not *what the code does*.
+
 **Quick principles:**
 - State changes: only via `enqueueCommand()`
 - Query methods: pure (no side effects)
