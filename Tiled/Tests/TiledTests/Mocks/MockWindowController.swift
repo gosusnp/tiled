@@ -9,8 +9,7 @@ class MockWindowController: WindowControllerProtocol {
     let windowId: WindowId
 
     private(set) var raiseCallCount = 0
-    private(set) var moveCallCount = 0
-    private(set) var resizeCallCount = 0
+    private(set) var repositionCallCount = 0
 
     nonisolated(unsafe) private static var elementCounter: Int = 1
 
@@ -41,14 +40,9 @@ class MockWindowController: WindowControllerProtocol {
         // No-op: don't actually raise windows in tests
     }
 
-    func move(to: CGPoint) throws {
-        moveCallCount += 1
-        // No-op: don't actually move windows in tests
-    }
-
-    func resize(size: CGSize) throws {
-        resizeCallCount += 1
-        // No-op: don't actually resize windows in tests
+    func reposition(to rect: CGRect) throws {
+        repositionCallCount += 1
+        // No-op: don't actually reposition windows in tests
     }
 
     var raiseWasCalled: Bool {
@@ -57,7 +51,6 @@ class MockWindowController: WindowControllerProtocol {
 
     func resetMockState() {
         raiseCallCount = 0
-        moveCallCount = 0
-        resizeCallCount = 0
+        repositionCallCount = 0
     }
 }

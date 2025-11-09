@@ -11,9 +11,6 @@ protocol WindowControllerProtocol: AnyObject {
     /// Raise the window to the front and focus it
     func raise()
 
-    /// Move the window to a specific position
-    func move(to: CGPoint) throws
-
-    /// Resize the window to a specific size
-    func resize(size: CGSize) throws
+    /// Reposition the window to a specific frame (move and resize atomically)
+    func reposition(to rect: CGRect) throws
 }

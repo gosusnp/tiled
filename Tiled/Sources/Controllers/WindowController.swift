@@ -28,13 +28,9 @@ class WindowController: WindowControllerProtocol {
         axHelper.raise(element)
     }
 
-    func move(to: CGPoint) throws {
+    func reposition(to rect: CGRect) throws {
         guard let element = windowId.getCurrentElement() else { throw WindowError.invalidWindow }
-        try axHelper.move(element, to: to)
-    }
-
-    func resize(size: CGSize) throws {
-        guard let element = windowId.getCurrentElement() else { throw WindowError.invalidWindow }
-        try axHelper.resize(element, size: size)
+        try axHelper.resize(element, size: rect.size)
+        try axHelper.move(element, to: rect.origin)
     }
 }

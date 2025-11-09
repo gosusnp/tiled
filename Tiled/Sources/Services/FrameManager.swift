@@ -191,11 +191,9 @@ class FrameManager {
             return
         }
 
-        // resize window to frame size
+        // Reposition window to frame
         let targetRect = frame.geometry.contentRect
-
-        try window.resize(size: targetRect.size)
-        try window.move(to: targetRect.origin)
+        try window.reposition(to: targetRect)
     }
 
     private func raiseWindow(_ windowId: WindowId?) {

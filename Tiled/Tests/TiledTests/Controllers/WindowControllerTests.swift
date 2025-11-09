@@ -55,76 +55,32 @@ struct WindowControllerTests {
         #expect(mockHelper.raiseCallCount == 0)
     }
 
-    // MARK: - Move Tests
+    // MARK: - Reposition Tests
 
-    @Test("move() delegates to axHelper with correct position")
-    func testMoveWindow() throws {
+    @Test("reposition() delegates to axHelper with correct rect")
+    func testRepositionWindow() throws {
         let windowId = WindowId(appPID: 123, registry: mockRegistry)
         mockRegistry.registerElement(mockElement, for: windowId.id)
         let controller = WindowController(windowId: windowId, axHelper: mockHelper)
 
-        let position = CGPoint(x: 100, y: 200)
-        try controller.move(to: position)
-
-        #expect(mockHelper.moveCallCount == 1)
-        #expect(mockHelper.lastMovePosition == position)
-    }
-
-    @Test("move() throws when window invalid")
-    func testMoveInvalidWindow() throws {
-        let windowId = WindowId(appPID: 123, registry: mockRegistry)
-        let controller = WindowController(windowId: windowId, axHelper: mockHelper)
-
-        var threwError = false
-        do {
-            try controller.move(to: CGPoint(x: 100, y: 200))
-        } catch WindowError.invalidWindow {
-            threwError = true
-        }
-
-        #expect(threwError)
-    }
-
-    @Test("move() propagates axHelper errors")
-    func testMovePropagatesAxHelperError() throws {
-        let windowId = WindowId(appPID: 123, registry: mockRegistry)
-        mockRegistry.registerElement(mockElement, for: windowId.id)
-        mockHelper.moveError = WindowError.moveFailed(.cannotComplete)
-        let controller = WindowController(windowId: windowId, axHelper: mockHelper)
-
-        var caughtError = false
-        do {
-            try controller.move(to: CGPoint(x: 100, y: 200))
-        } catch WindowError.moveFailed {
-            caughtError = true
-        }
-
-        #expect(caughtError)
-    }
-
-    // MARK: - Resize Tests
-
-    @Test("resize() delegates to axHelper with correct size")
-    func testResizeWindow() throws {
-        let windowId = WindowId(appPID: 123, registry: mockRegistry)
-        mockRegistry.registerElement(mockElement, for: windowId.id)
-        let controller = WindowController(windowId: windowId, axHelper: mockHelper)
-
-        let size = CGSize(width: 800, height: 600)
-        try controller.resize(size: size)
+        let rect = CGRect(x: 100, y: 200, width: 800, height: 600)
+        try controller.reposition(to: rect)
 
         #expect(mockHelper.resizeCallCount == 1)
-        #expect(mockHelper.lastResizeSize == size)
+        #expect(mockHelper.lastResizeSize == rect.size)
+        #expect(mockHelper.moveCallCount == 1)
+        #expect(mockHelper.lastMovePosition == rect.origin)
     }
 
-    @Test("resize() throws when window invalid")
-    func testResizeInvalidWindow() throws {
+    @Test("reposition() throws when window invalid")
+    func testRepositionInvalidWindow() throws {
         let windowId = WindowId(appPID: 123, registry: mockRegistry)
         let controller = WindowController(windowId: windowId, axHelper: mockHelper)
 
         var threwError = false
         do {
-            try controller.resize(size: CGSize(width: 800, height: 600))
+            let rect = CGRect(x: 100, y: 200, width: 800, height: 600)
+            try controller.reposition(to: rect)
         } catch WindowError.invalidWindow {
             threwError = true
         }
@@ -132,8 +88,8 @@ struct WindowControllerTests {
         #expect(threwError)
     }
 
-    @Test("resize() propagates axHelper errors")
-    func testResizePropagatesAxHelperError() throws {
+    @Test("reposition() propagates axHelper resize errors")
+    func testRepositionPropagatesResizeError() throws {
         let windowId = WindowId(appPID: 123, registry: mockRegistry)
         mockRegistry.registerElement(mockElement, for: windowId.id)
         mockHelper.resizeError = WindowError.resizeFailed(.cannotComplete)
@@ -141,8 +97,27 @@ struct WindowControllerTests {
 
         var caughtError = false
         do {
-            try controller.resize(size: CGSize(width: 800, height: 600))
+            let rect = CGRect(x: 100, y: 200, width: 800, height: 600)
+            try controller.reposition(to: rect)
         } catch WindowError.resizeFailed {
+            caughtError = true
+        }
+
+        #expect(caughtError)
+    }
+
+    @Test("reposition() propagates axHelper move errors")
+    func testRepositionPropagatesMoveError() throws {
+        let windowId = WindowId(appPID: 123, registry: mockRegistry)
+        mockRegistry.registerElement(mockElement, for: windowId.id)
+        mockHelper.moveError = WindowError.moveFailed(.cannotComplete)
+        let controller = WindowController(windowId: windowId, axHelper: mockHelper)
+
+        var caughtError = false
+        do {
+            let rect = CGRect(x: 100, y: 200, width: 800, height: 600)
+            try controller.reposition(to: rect)
+        } catch WindowError.moveFailed {
             caughtError = true
         }
 
@@ -161,11 +136,11 @@ struct WindowControllerTests {
         mockRegistry.registerElement(mockElement, for: windowId.id)
 
         // Both controllers should access same element
-        try controller1.move(to: CGPoint(x: 100, y: 200))
-        try controller2.resize(size: CGSize(width: 800, height: 600))
+        try controller1.reposition(to: CGRect(x: 100, y: 200, width: 500, height: 400))
+        try controller2.reposition(to: CGRect(x: 0, y: 0, width: 800, height: 600))
 
-        #expect(mockHelper.moveCallCount == 1)
-        #expect(mockHelper.resizeCallCount == 1)
+        #expect(mockHelper.moveCallCount == 2)
+        #expect(mockHelper.resizeCallCount == 2)
     }
 
     @Test("Operations fail gracefully when WindowId becomes invalid")
@@ -175,8 +150,9 @@ struct WindowControllerTests {
         let controller = WindowController(windowId: windowId, axHelper: mockHelper)
 
         // First operation succeeds
-        try controller.move(to: CGPoint(x: 100, y: 200))
+        try controller.reposition(to: CGRect(x: 100, y: 200, width: 500, height: 400))
         #expect(mockHelper.moveCallCount == 1)
+        #expect(mockHelper.resizeCallCount == 1)
 
         // Invalidate the window (simulate close)
         mockRegistry.invalidateWindow(for: windowId.id)
@@ -184,7 +160,7 @@ struct WindowControllerTests {
         // Second operation fails gracefully
         var threwError = false
         do {
-            try controller.move(to: CGPoint(x: 200, y: 300))
+            try controller.reposition(to: CGRect(x: 200, y: 300, width: 600, height: 500))
         } catch WindowError.invalidWindow {
             threwError = true
         }
@@ -211,8 +187,7 @@ struct WindowControllerTests {
         mockRegistry.registerElement(mockElement, for: windowId.id)
         let controller = WindowController(windowId: windowId, axHelper: mockHelper)
 
-        try controller.move(to: CGPoint(x: 0, y: 0))
-        try controller.resize(size: CGSize(width: 1920, height: 1080))
+        try controller.reposition(to: CGRect(x: 0, y: 0, width: 1920, height: 1080))
         controller.raise()
 
         #expect(mockHelper.moveCallCount == 1)
@@ -226,11 +201,12 @@ struct WindowControllerTests {
         mockRegistry.registerElement(mockElement, for: windowId.id)
         let controller = WindowController(windowId: windowId, axHelper: mockHelper)
 
-        try controller.move(to: CGPoint(x: 100, y: 100))
-        try controller.move(to: CGPoint(x: 200, y: 200))
-        try controller.move(to: CGPoint(x: 300, y: 300))
+        try controller.reposition(to: CGRect(x: 100, y: 100, width: 400, height: 300))
+        try controller.reposition(to: CGRect(x: 200, y: 200, width: 500, height: 400))
+        try controller.reposition(to: CGRect(x: 300, y: 300, width: 600, height: 500))
 
         #expect(mockHelper.moveCallCount == 3)
+        #expect(mockHelper.resizeCallCount == 3)
         #expect(mockHelper.lastMovePosition == CGPoint(x: 300, y: 300))
     }
 }

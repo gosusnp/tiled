@@ -786,9 +786,8 @@ struct FrameManagerTests {
         // Assign window should trigger positioning
         try frameManager.assignWindow(window, shouldFocus: false)
 
-        // Window should have been resized and moved
-        #expect(window.resizeCallCount > 0, "Window should be resized when assigned to frame")
-        #expect(window.moveCallCount > 0, "Window should be moved when assigned to frame")
+        // Window should have been repositioned (resize and move)
+        #expect(window.repositionCallCount > 0, "Window should be repositioned when assigned to frame")
     }
 
     // MARK: - Stale WindowId Handling Tests
