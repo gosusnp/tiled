@@ -35,6 +35,8 @@ class MockAXElement {
 class MockWindowRegistry: @preconcurrency WindowRegistry {
     var elements: [UUID: AXUIElement] = [:]
     var mockElement: MockAXElement?
+    private var elementByWindowId: [UUID: AXUIElement] = [:]
+    private var validWindowIds: Set<UUID> = []
 
     func getOrRegister(element: AXUIElement) -> WindowId? {
         return WindowId(appPID: 1234, registry: self)
@@ -45,14 +47,16 @@ class MockWindowRegistry: @preconcurrency WindowRegistry {
     }
 
     func getElement(for windowId: WindowId) -> AXUIElement? {
-        // Return nil - we don't test actual element access in unit tests
-        // Integration tests would use real AXUIElement from actual windows
-        return nil
+        guard validWindowIds.contains(windowId.id) else { return nil }
+        return elementByWindowId[windowId.id]
     }
 
     func updateElement(_ element: AXUIElement, for windowId: WindowId) {}
 
-    func unregister(_ windowId: WindowId) {}
+    func unregister(_ windowId: WindowId) {
+        elementByWindowId.removeValue(forKey: windowId.id)
+        validWindowIds.remove(windowId.id)
+    }
 
     func getAllWindowIds() -> [WindowId] {
         return []
@@ -63,6 +67,17 @@ class MockWindowRegistry: @preconcurrency WindowRegistry {
     func unregisterObserver(_ observer: WindowIdObserver, for windowId: WindowId) {}
 
     func _notifyWindowIdDestroyed(_ windowId: WindowId) {}
+
+    // Test helper methods
+    func registerElement(_ element: AXUIElement, for windowIdUUID: UUID) {
+        elementByWindowId[windowIdUUID] = element
+        validWindowIds.insert(windowIdUUID)
+    }
+
+    func invalidateWindow(for windowIdUUID: UUID) {
+        elementByWindowId.removeValue(forKey: windowIdUUID)
+        validWindowIds.remove(windowIdUUID)
+    }
 }
 
 // MARK: - Mock Accessibility Helper

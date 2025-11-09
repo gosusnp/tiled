@@ -5,39 +5,6 @@ import Cocoa
 import Testing
 @testable import Tiled
 
-// MARK: - Mock AccessibilityAPIHelper
-
-class MockAccessibilityAPIHelper: AccessibilityAPIHelper {
-    var mockAppPID: pid_t? = 1234
-    var mockCGWindowID: CGWindowID? = nil
-    var mockTitle = "MockWindow"
-
-    func getAppPID(_ element: AXUIElement) -> pid_t? {
-        return mockAppPID
-    }
-
-    func getWindowID(_ element: AXUIElement) -> CGWindowID? {
-        return mockCGWindowID
-    }
-
-    func getWindowTitle(_ element: AXUIElement) -> String {
-        return mockTitle
-    }
-
-    func isElementValid(_ element: AXUIElement) -> Bool {
-        // For tests, all elements are considered valid by default
-        return true
-    }
-
-    func move(_ element: AXUIElement, to: CGPoint) throws {
-    }
-
-    func raise(_ element: AXUIElement) {
-    }
-
-    func resize(_ element: AXUIElement, size: CGSize) throws {
-    }
-}
 
 // MARK: - Mock AXUIElement
 
