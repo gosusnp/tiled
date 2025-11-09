@@ -267,10 +267,10 @@ class FrameManager {
         case .addWindow(let window):
             guard let frame = activeFrame else { return }
             try frame.addWindow(window.windowId, shouldFocus: false)
-            frame.refreshOverlay()
+            // State change triggers observer; no explicit UI refresh needed
         case .removeWindow(let window):
             let _ = activeFrame?.removeWindow(window.windowId)
-            activeFrame?.refreshOverlay()
+            // State change triggers observer; no explicit UI refresh needed
         case .focusWindow(let window):
             // TODO Implement
             return
@@ -308,7 +308,7 @@ class FrameManager {
             frameMap[windowId] = frame
             // Position window in its frame
             try snapWindowToFrame(windowId, frame: frame)
-            frame.refreshOverlay()
+            // State change automatically triggers observer; UI stays in sync
         } catch {
             logger.warning("Failed to assign window: \(error)")
             windowControllerMap.removeValue(forKey: windowId.asKey())
@@ -325,11 +325,10 @@ class FrameManager {
 
         let wasActive = frame.isActiveWindow(windowId)
 
-        // Remove from frame
+        // Remove from frame. State change automatically triggers observer UI sync.
         let _ = frame.removeWindow(windowId)
         windowControllerMap.removeValue(forKey: windowId.asKey())
         frameMap.removeValue(forKey: windowId)
-        frame.refreshOverlay()
 
         if wasActive {
             // TODO We should raise the active window again because it changed and may no longer be on top

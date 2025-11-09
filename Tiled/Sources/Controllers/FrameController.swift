@@ -59,6 +59,12 @@ class FrameController {
     /// Update the published windowTabs property based on current state
     private func updateWindowTabs() {
         self.windowTabs = computeWindowTabs()
+
+        // Non-leaf frames need explicit visual feedback (dimmed border) that the frame is inactive.
+        // The observer handles empty tab rendering, but we must explicitly call clear() to dim the border.
+        if !self.children.isEmpty && self.windowTabs.isEmpty {
+            self.frameWindow.clear()
+        }
     }
 
     /// Public initializer for production use
@@ -138,14 +144,12 @@ class FrameController {
     func nextWindow() -> WindowId? {
         let windowId = self.windowStack.nextWindow()
         self.updateWindowTabs()
-        self.refreshOverlay()
         return windowId
     }
 
     func previousWindow() -> WindowId? {
         let windowId = self.windowStack.previousWindow()
         self.updateWindowTabs()
-        self.refreshOverlay()
         return windowId
     }
 
@@ -155,12 +159,9 @@ class FrameController {
             return
         }
 
-        // Add to target frame (which will call updateWindowTabs)
+        // Add to target frame. Both removeWindow() and addWindow() trigger updateWindowTabs(),
+        // which publishes state changes. Observers automatically react without explicit refresh calls.
         try targetFrame.addWindow(windowId, shouldFocus: true)
-
-        // Refresh both frames
-        self.refreshOverlay()
-        targetFrame.refreshOverlay()
     }
 
     /// Check if a specific window is the active window in this frame
@@ -214,10 +215,9 @@ class FrameController {
         // Hide parent frame's window since children now own the space
         self.frameWindow.hide()
 
-        // Parent is now non-leaf, so its tabs should be empty
+        // Publish state change (parent becomes non-leaf). Observer and clear() handle the UI transition.
         self.updateWindowTabs()
 
-        self.refreshOverlay()
         return child1
     }
 
@@ -260,8 +260,7 @@ class FrameController {
         // Currently we only have WindowIds, not the actual WindowController objects.
         // This will be fixed when FrameController has access to FrameManager.
 
-        // Refresh overlay
-        parent.refreshOverlay()
+        // Parent's state was updated by takeWindowsFrom(). Observer automatically syncs the UI.
 
         return parent
     }
@@ -299,8 +298,7 @@ class FrameController {
         parent.frameWindow.show()
         parent.setActive(true)
 
-        // Refresh to reflect consolidated state
-        parent.refreshOverlay()
+        // Parent's state was updated by takeWindowsFrom(). Observer automatically syncs the UI.
 
         return parent
     }

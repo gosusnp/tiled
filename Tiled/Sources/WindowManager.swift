@@ -64,7 +64,7 @@ class WindowManager {
             }
         }
 
-        self.rootFrame?.refreshOverlay()
+        // Observer automatically syncs UI as windows are assigned. No manual refresh needed.
 
         // Register callbacks for window lifecycle events
         // New windows are enqueued as commands, ensuring atomic processing with frame operations
