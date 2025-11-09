@@ -15,7 +15,7 @@ struct FrameCommandQueueTests {
         // Initialize with mock window factory for all frame creation
         let mockFactory = MockFrameWindowFactory()
         let testRect = CGRect(x: 0, y: 0, width: 800, height: 600)
-        let rootFrame = FrameController(rect: testRect, config: frameManager.config, windowFactory: mockFactory)
+        let rootFrame = FrameController(rect: testRect, config: frameManager.config, windowFactory: mockFactory, axHelper: MockAccessibilityAPIHelper())
         rootFrame.setActive(true)
         frameManager.rootFrame = rootFrame
         frameManager.activeFrame = rootFrame
@@ -69,7 +69,7 @@ struct FrameCommandQueueTests {
         // Initialize with mock window factory
         let mockFactory = MockFrameWindowFactory()
         let testRect = CGRect(x: 0, y: 0, width: 800, height: 600)
-        let rootFrame = FrameController(rect: testRect, config: config, windowFactory: mockFactory)
+        let rootFrame = FrameController(rect: testRect, config: config, windowFactory: mockFactory, axHelper: MockAccessibilityAPIHelper())
         rootFrame.setActive(true)
         fm.rootFrame = rootFrame
         fm.activeFrame = rootFrame

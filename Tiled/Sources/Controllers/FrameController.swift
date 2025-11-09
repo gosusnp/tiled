@@ -21,6 +21,7 @@ class FrameController {
     let frameWindow: FrameWindowProtocol
     let windowStack: WindowStackController
     private let windowFactory: FrameWindowFactory
+    private let axHelper: AccessibilityAPIHelper
 
     // Map WindowId to WindowControllerProtocol for operations that need the controller
     private var windowMap: [WindowId: WindowControllerProtocol] = [:]
@@ -36,33 +37,36 @@ class FrameController {
     }
 
     /// Public initializer for production use
-    init(rect: CGRect, config: ConfigController) {
+    init(rect: CGRect, config: ConfigController, axHelper: AccessibilityAPIHelper) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
         self.windowFactory = RealFrameWindowFactory(styleProvider: self.styleProvider)
         self.frameWindow = self.windowFactory.createFrameWindow(geometry: self.geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
+        self.axHelper = axHelper
     }
 
     /// Internal initializer for testing with custom window factory
-    init(rect: CGRect, config: ConfigController, windowFactory: FrameWindowFactory) {
+    init(rect: CGRect, config: ConfigController, windowFactory: FrameWindowFactory, axHelper: AccessibilityAPIHelper) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = FrameGeometry(rect: rect, titleBarHeight: config.titleBarHeight)
         self.windowFactory = windowFactory
         self.frameWindow = windowFactory.createFrameWindow(geometry: self.geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
+        self.axHelper = axHelper
     }
 
     /// Internal initializer for child frames created during split
-    private init(geometry: FrameGeometry, config: ConfigController, windowFactory: FrameWindowFactory) {
+    private init(geometry: FrameGeometry, config: ConfigController, windowFactory: FrameWindowFactory, axHelper: AccessibilityAPIHelper) {
         self.config = config
         self.styleProvider = StyleProvider()
         self.geometry = geometry
         self.windowFactory = windowFactory
         self.frameWindow = windowFactory.createFrameWindow(geometry: geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
+        self.axHelper = axHelper
     }
 
     func refreshOverlay() {
@@ -70,8 +74,7 @@ class FrameController {
             // Convert WindowIds to WindowTabs for UI rendering
             let tabs = self.windowStack.tabs.enumerated().map { (index, windowId) in
                 let isActive = index == self.windowStack.activeIndex
-                // Get window title from the ID (will be resolved by caller if needed)
-                let title = "Window"  // Placeholder - actual title comes from WindowController
+                let title = windowId.getCurrentElement().map{ (element) in axHelper.getWindowTitle(element) } ?? "Unknown"
                 return WindowTab(title: title, isActive: isActive)
             }
             self.frameWindow.updateOverlay(tabs: tabs)
@@ -180,9 +183,9 @@ class FrameController {
             ? self.geometry.splitHorizontally()
             : self.geometry.splitVertically()
 
-        let child1 = FrameController(geometry: geo1, config: self.config, windowFactory: self.windowFactory)
+        let child1 = FrameController(geometry: geo1, config: self.config, windowFactory: self.windowFactory, axHelper: self.axHelper)
         child1.parent = self
-        let child2 = FrameController(geometry: geo2, config: self.config, windowFactory: self.windowFactory)
+        let child2 = FrameController(geometry: geo2, config: self.config, windowFactory: self.windowFactory, axHelper: self.axHelper)
         child2.parent = self
         self.children = [child1, child2]
         self.splitDirection = direction
@@ -291,9 +294,9 @@ class FrameController {
         return "Frame(rect=\(self.geometry.frameRect))"
     }
 
-    static func fromScreen(_ screen: NSScreen, config: ConfigController) -> FrameController {
+    static func fromScreen(_ screen: NSScreen, config: ConfigController, axHelper: AccessibilityAPIHelper) -> FrameController {
         let geometry = FrameGeometry.fromScreen(screen, titleBarHeight: config.titleBarHeight)
-        let frame = FrameController(rect: geometry.frameRect, config: config)
+        let frame = FrameController(rect: geometry.frameRect, config: config, axHelper: axHelper)
         frame.setActive(true)
         return frame
     }

@@ -12,6 +12,9 @@ protocol AccessibilityAPIHelper {
     /// Extract CGWindowID from an AXUIElement by geometry matching
     func getWindowID(_ element: AXUIElement) -> CGWindowID?
 
+    // Extract Window Title from AXUIElement
+    func getWindowTitle(_ element: AXUIElement) -> String
+
     /// Check if an element is still valid
     func isElementValid(_ element: AXUIElement) -> Bool
 
@@ -99,6 +102,13 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
 
         return nil
     }
+
+    func getWindowTitle(_ element: AXUIElement) -> String {
+        var titleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
+        return titleRef as? String ?? "Unknown"
+    }
+
 
     func isElementValid(_ element: AXUIElement) -> Bool {
         // Check if element is still valid by attempting to get a basic attribute

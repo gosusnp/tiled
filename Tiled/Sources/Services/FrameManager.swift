@@ -9,6 +9,7 @@ class FrameManager {
     let config: ConfigController
     var rootFrame: FrameController?
     var activeFrame: FrameController?
+    private let axHelper: AccessibilityAPIHelper
 
     private let navigationService: FrameNavigationService
     private let logger: Logger
@@ -24,17 +25,18 @@ class FrameManager {
     private var commandQueue: [FrameCommand] = []
     private var isProcessing = false
 
-    init(config: ConfigController, logger: Logger = Logger()) {
+    init(config: ConfigController, logger: Logger = Logger(), axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
         self.config = config
         self.navigationService = FrameNavigationService()
         self.logger = logger
+        self.axHelper = axHelper
     }
 
     // MARK: - Initialization
 
     func initializeFromScreen(_ screen: NSScreen) {
         let geometry = FrameGeometry.fromScreen(screen, titleBarHeight: config.titleBarHeight)
-        let frame = FrameController(rect: geometry.frameRect, config: config)
+        let frame = FrameController(rect: geometry.frameRect, config: config, axHelper:axHelper)
         frame.setActive(true)
         self.rootFrame = frame
         self.activeFrame = frame

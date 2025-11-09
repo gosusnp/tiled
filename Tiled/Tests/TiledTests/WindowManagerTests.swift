@@ -22,7 +22,7 @@ struct WindowManagerTests {
 
         // Set up FrameManager with a test frame
         let frameManager = FrameManager(config: config)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, axHelper: MockAccessibilityAPIHelper())
         frameManager.activeFrame = frameManager.rootFrame
         windowManager.frameManager = frameManager
 
@@ -66,7 +66,7 @@ struct WindowManagerTests {
 
         // Set up FrameManager with a test frame
         let frameManager = FrameManager(config: config)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: config, axHelper: MockAccessibilityAPIHelper())
         frameManager.activeFrame = frameManager.rootFrame
         windowManager.frameManager = frameManager
 

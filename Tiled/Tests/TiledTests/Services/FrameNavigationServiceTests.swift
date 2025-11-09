@@ -21,7 +21,7 @@ struct FrameNavigationServiceTests {
     }
 
     private func createTestFrame(rect: CGRect = CGRect(x: 0, y: 0, width: 1920, height: 1080)) -> FrameController {
-        FrameController(rect: rect, config: config, windowFactory: mockFactory)
+        FrameController(rect: rect, config: config, windowFactory: mockFactory, axHelper: MockAccessibilityAPIHelper())
     }
 
     // MARK: - Vertical Split Tests (creates left/right frames)

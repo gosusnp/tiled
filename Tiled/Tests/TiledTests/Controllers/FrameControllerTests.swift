@@ -16,9 +16,13 @@ struct FrameControllerTests {
         self.testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
     }
 
+    func createFrameController() -> FrameController {
+        return FrameController(rect: testFrame, config: config, axHelper: MockAccessibilityAPIHelper())
+    }
+
     @Test("Creates a frame controller from rect")
     func testFrameControllerInitialization() {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
 
         #expect(frameController.windowStack.count == 0)
         #expect(frameController.children.isEmpty)
@@ -27,7 +31,7 @@ struct FrameControllerTests {
 
     @Test("nextWindow delegates to windowStack and calls raise")
     func testNextWindow() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
 
         // Add windows through frameController (handles WindowId conversion)
         let window1 = MockWindowController(title: "Window 1")
@@ -45,7 +49,7 @@ struct FrameControllerTests {
 
     @Test("previousWindow delegates to windowStack and calls raise")
     func testPreviousWindow() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
 
         // Add windows through frameController
         let window1 = MockWindowController(title: "Window 1")
@@ -64,7 +68,7 @@ struct FrameControllerTests {
 
     @Test("Split creates child frames")
     func testSplit() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
 
         // Split with empty frame (no windows to transfer)
         let newActiveFrame = try frameController.split(direction: .Horizontal)
@@ -78,7 +82,7 @@ struct FrameControllerTests {
 
     @Test("nextWindow does nothing on empty stack")
     func testNextWindowOnEmpty() {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
 
         // Should not crash when calling nextWindow on empty frame
         frameController.nextWindow()
@@ -87,7 +91,7 @@ struct FrameControllerTests {
 
     @Test("Focus moves to next window when active window is removed")
     func testFocusOnWindowRemoval() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
         let window3 = MockWindowController(title: "Window 3")
@@ -108,7 +112,7 @@ struct FrameControllerTests {
 
     @Test("Removing non-existent window returns false")
     func testRemoveNonExistentWindow() throws {
-        let frameController = FrameController(rect: testFrame, config: config)
+        let frameController = createFrameController()
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
@@ -122,8 +126,8 @@ struct FrameControllerTests {
 
     @Test("Windows are transferred between frames")
     func testFrameReferenceUpdateOnTransfer() throws {
-        let frame1 = FrameController(rect: testFrame, config: config)
-        let frame2 = FrameController(rect: testFrame, config: config)
+        let frame1 = createFrameController()
+        let frame2 = createFrameController()
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")
 
@@ -143,7 +147,7 @@ struct FrameControllerTests {
 
     @Test("Cannot close root frame (has no parent)")
     func testCannotCloseRootFrame() throws {
-        let rootFrame = FrameController(rect: testFrame, config: config)
+        let rootFrame = createFrameController()
         let window = MockWindowController(title: "Window 1")
 
         try rootFrame.addWindow(window)
@@ -160,7 +164,7 @@ struct FrameControllerTests {
 
     @Test("Close returns the active frame and removes closed frame from children")
     func testCloseReturnsActiveFrame() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
 
         // Create split - parent now has two children
         let child1 = try parent.split(direction: .Vertical)
@@ -179,7 +183,7 @@ struct FrameControllerTests {
 
     @Test("Closing a frame returns appropriate next active")
     func testCloseReturnsAppropriateActiveFrame() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
 
         // Create split
         let child1 = try parent.split(direction: .Vertical)
@@ -198,7 +202,7 @@ struct FrameControllerTests {
 
     @Test("Close merges only two children properly")
     func testCloseWithTwoChildren() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
 
         // Create split gives exactly 2 children
         let child1 = try parent.split(direction: .Horizontal)
@@ -217,7 +221,7 @@ struct FrameControllerTests {
 
     @Test("Move window to adjacent frame removes from source")
     func testMoveWindowRemovesFromSource() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
         let child1 = try parent.split(direction: .Vertical)
         let child2 = parent.children[1]
 
@@ -236,7 +240,7 @@ struct FrameControllerTests {
 
     @Test("Move window to adjacent frame adds to target")
     func testMoveWindowAddsToTarget() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
         let child1 = try parent.split(direction: .Vertical)
         let child2 = parent.children[1]
 
@@ -252,7 +256,7 @@ struct FrameControllerTests {
 
     @Test("Move window makes it active in target frame")
     func testMoveWindowActivatesInTarget() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
         let child1 = try parent.split(direction: .Vertical)
         let child2 = parent.children[1]
 
@@ -273,7 +277,7 @@ struct FrameControllerTests {
 
     @Test("Move window with multiple windows in source")
     func testMoveWindowWithMultipleInSource() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
         let child1 = try parent.split(direction: .Vertical)
         let child2 = parent.children[1]
 
@@ -299,7 +303,7 @@ struct FrameControllerTests {
 
     @Test("Move active window keeps source stable")
     func testMoveActiveWindowStability() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
         let child1 = try parent.split(direction: .Vertical)
         let child2 = parent.children[1]
 
@@ -320,7 +324,7 @@ struct FrameControllerTests {
 
     @Test("Recovery: closeFrame gracefully handles inconsistent tree with wrong number of children")
     func testCloseFrameRecoveryWithInconsistentTree() throws {
-        let parent = FrameController(rect: testFrame, config: config)
+        let parent = createFrameController()
 
         // Create split - parent now has 2 children
         let child1 = try parent.split(direction: .Vertical)
@@ -340,7 +344,7 @@ struct FrameControllerTests {
         #expect(child2.windowStack.count == 2)
 
         // Manually corrupt the tree by adding a third child (simulates unexpected state)
-        let extraChild = FrameController(rect: testFrame, config: config)
+        let extraChild = createFrameController()
         extraChild.parent = parent
         parent.children.append(extraChild)
 

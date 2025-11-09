@@ -10,6 +10,7 @@ import Testing
 class MockAccessibilityAPIHelper: AccessibilityAPIHelper {
     var mockAppPID: pid_t? = 1234
     var mockCGWindowID: CGWindowID? = nil
+    var mockTitle = "MockWindow"
 
     func getAppPID(_ element: AXUIElement) -> pid_t? {
         return mockAppPID
@@ -17,6 +18,10 @@ class MockAccessibilityAPIHelper: AccessibilityAPIHelper {
 
     func getWindowID(_ element: AXUIElement) -> CGWindowID? {
         return mockCGWindowID
+    }
+
+    func getWindowTitle(_ element: AXUIElement) -> String {
+        return mockTitle
     }
 
     func isElementValid(_ element: AXUIElement) -> Bool {
