@@ -582,16 +582,23 @@ struct FrameManagerTests {
     @Test("Move window transfers ownership between frames")
     func testMoveWindowTransfersOwnership() throws {
         let frameManager = FrameManager(config: config, logger: logger)
-        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        frameManager.rootFrame = createFrameController(testFrame)
-        frameManager.activeFrame = frameManager.rootFrame
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
 
         guard let root = frameManager.rootFrame else {
             Issue.record("rootFrame should not be nil")
             return
         }
 
-        // Create a vertical split
+        // Add a window to root first
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // Verify window is in root
+        #expect(root.windowStack.count == 1)
+
+        // Create a vertical split - this moves window to left child
         try frameManager.splitVertically()
         guard root.children.count == 2 else {
             Issue.record("Should have 2 children after split")
@@ -600,10 +607,6 @@ struct FrameManagerTests {
 
         let leftChild = root.children[0]
         let rightChild = root.children[1]
-
-        // Add window to left child
-        let window = MockWindowController(title: "Test Window")
-        try leftChild.addWindow(window.windowId)
 
         #expect(leftChild.windowStack.count == 1)
         #expect(rightChild.windowStack.count == 0)
@@ -847,5 +850,104 @@ struct FrameManagerTests {
 
         // Verify all references are cleaned up
         #expect(frameManager.frameContaining(window.windowId) == nil, "Window should be removed from frameMap")
+    }
+
+    // MARK: - Missing Window Cleanup Tests
+
+    @Test("missing window cleanup happens when snap discovers missing controller")
+    func testMissingWindowCleanupOnSnap() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = createFrameController(testFrame)
+        frameManager.activeFrame = frameManager.rootFrame
+
+        guard let rootFrame = frameManager.rootFrame else { return }
+
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // Verify window is in frame and frameMap
+        #expect(rootFrame.windowIds.contains(window.windowId), "Window should be in frame")
+        #expect(frameManager.frameContaining(window.windowId) === rootFrame, "Window should be in frameMap")
+
+        // Simulate window disappearing by unregistering it (controller is gone)
+        frameManager.unregisterWindow(windowId: window.windowId)
+
+        // Now split triggers snapFrameWindows which discovers missing window
+        try frameManager.splitHorizontally()
+
+        // Cleanup should have happened: window removed from frame
+        #expect(!rootFrame.windowIds.contains(window.windowId), "Missing window should be cleaned up from frame")
+
+        // Cleanup should have happened: window removed from frameMap
+        #expect(frameManager.frameContaining(window.windowId) == nil, "Missing window should be cleaned up from frameMap")
+    }
+
+    @Test("raiseWindow cleans up missing window")
+    func testRaiseWindowCleanupMissing() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        guard let rootFrame = frameManager.rootFrame else { return }
+
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // Verify window is tracked
+        #expect(rootFrame.windowIds.contains(window.windowId), "Window should be in frame")
+        #expect(frameManager.frameContaining(window.windowId) != nil, "Window should be in frameMap")
+
+        // Simulate window disappearing by removing only the controller, not the frameMap entry
+        // This simulates the scenario where the window closes but we still have the WindowId tracked
+        frameManager.windowControllerMap.removeValue(forKey: window.windowId.asKey())
+
+        // Now raise is called (operation discovers window is gone)
+        frameManager.nextWindow()  // This calls raiseWindow internally
+
+        // Cleanup should have happened
+        #expect(!rootFrame.windowIds.contains(window.windowId), "Missing window should be removed from frame after raise attempt")
+        #expect(frameManager.frameContaining(window.windowId) == nil, "Missing window should be removed from frameMap after raise attempt")
+    }
+
+    @Test("cleanup restores consistency after window disappearance")
+    func testCleanupRestoresConsistency() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        guard let rootFrame = frameManager.rootFrame else { return }
+
+        // Add two windows
+        let window1 = MockWindowController(title: "Window 1")
+        let window2 = MockWindowController(title: "Window 2")
+        frameManager.registerExistingWindow(window1, windowId: window1.windowId)
+        frameManager.registerExistingWindow(window2, windowId: window2.windowId)
+        try frameManager.assignWindow(window1, shouldFocus: false)
+        try frameManager.assignWindow(window2, shouldFocus: false)
+
+        #expect(rootFrame.windowIds.count == 2, "Should have 2 windows")
+
+        // Window1 disappears (remove controller but keep frameMap entry to simulate real scenario)
+        // This is the inconsistent state: window in frame but no controller
+        frameManager.windowControllerMap.removeValue(forKey: window1.windowId.asKey())
+
+        // Before cleanup: inconsistency exists (window1 in frame but controller missing)
+        #expect(rootFrame.windowIds.contains(window1.windowId), "window1 still in frame (orphaned)")
+        #expect(frameManager.frameContaining(window1.windowId) != nil, "window1 still in frameMap")
+
+        // Operation discovers missing window and triggers cleanup (split triggers snap)
+        try frameManager.splitHorizontally()
+
+        // After split, windows are in child frames, not rootFrame
+        guard let child1 = rootFrame.children.first else { return }
+
+        // After cleanup: consistency restored
+        #expect(!child1.windowIds.contains(window1.windowId), "window1 should be removed from child1 frame")
+        #expect(frameManager.frameContaining(window1.windowId) == nil, "window1 should no longer be in frameMap")
+        #expect(child1.windowIds.count == 1, "child1 should have 1 window left")
+        #expect(child1.windowIds.contains(window2.windowId), "window2 should still be there")
     }
 }

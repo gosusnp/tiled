@@ -185,7 +185,11 @@ class FrameManager {
     }
 
     private func snapWindowToFrame(_ windowId: WindowId?, frame: FrameController) throws {
-        guard let window = getWindow(windowId) else { return }
+        guard let window = getWindow(windowId) else {
+            // Window controller is missing - clean up all references
+            cleanupMissingWindow(windowId, from: frame)
+            return
+        }
 
         // resize window to frame size
         let targetRect = frame.geometry.contentRect
@@ -195,11 +199,41 @@ class FrameManager {
     }
 
     private func raiseWindow(_ windowId: WindowId?) {
-        getWindow(windowId)?.raise()
+        guard let window = getWindow(windowId) else {
+            // Window controller is missing - clean up all references
+            cleanupMissingWindow(windowId)
+            return
+        }
+        window.raise()
     }
 
     private func getWindow(_ windowId: WindowId?) -> WindowControllerProtocol? {
         return windowId.flatMap { id in windowControllerMap[id.asKey()] }
+    }
+
+    /// Cleanup when a WindowId's controller is discovered to be missing.
+    /// This ensures that when an operation discovers a window is gone (likely due to app exit),
+    /// we clean up all references immediately rather than leaving inconsistent state.
+    /// - Parameters:
+    ///   - windowId: The WindowId whose controller was not found
+    ///   - frame: Optional frame we know contains this window. If provided, we remove from it directly.
+    ///            If not provided, we look it up in frameMap.
+    private func cleanupMissingWindow(_ windowId: WindowId?, from frame: FrameController? = nil) {
+        guard let windowId = windowId else { return }
+
+        // Determine which frame owns this window
+        let owningFrame = frame ?? frameMap[windowId]
+
+        // Remove from frame's window stack
+        if let owningFrame = owningFrame {
+            _ = owningFrame.removeWindow(windowId)
+        }
+
+        // Remove from frameMap
+        frameMap.removeValue(forKey: windowId)
+
+        // Remove from windowControllerMap
+        windowControllerMap.removeValue(forKey: windowId.asKey())
     }
 
     // MARK: - Command Execution
