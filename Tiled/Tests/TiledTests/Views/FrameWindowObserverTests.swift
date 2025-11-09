@@ -236,4 +236,228 @@ struct FrameWindowObserverTests {
         #expect(parent.windowTabs.count == 2, "Parent should show consolidated windows after child closes")
         #expect(!parent.children.isEmpty == false, "Parent should be leaf after close")
     }
+
+    // MARK: - Comprehensive Lifecycle Tests
+
+    @Test("Observers active in deeply nested frame hierarchy")
+    func testObserversInDeeplyNestedHierarchy() throws {
+        let root = createFrameController()
+        let w1 = MockWindowController(title: "W1")
+        try root.addWindow(w1.windowId)
+
+        // Create 3 levels of splits: root -> level1 -> level2
+        let level1 = try root.split(direction: .Horizontal)
+        let level2 = try level1.split(direction: .Vertical)
+
+        // All frames should have active observers
+        #expect((root.frameWindow as? FrameWindow)?.hasActiveBindings == true)
+        #expect((level1.frameWindow as? FrameWindow)?.hasActiveBindings == true)
+        #expect((level2.frameWindow as? FrameWindow)?.hasActiveBindings == true)
+
+        // All non-leaf frames should have empty tabs
+        #expect(root.windowTabs.isEmpty)
+        #expect(level1.windowTabs.isEmpty)
+
+        // Only leaf should have tabs
+        #expect(level2.windowTabs.count == 1)
+    }
+
+    @Test("Observer tracks state through complex operations sequence")
+    func testObserverTracksComplexOperationSequence() throws {
+        let root = createFrameController()
+        let w1 = MockWindowController(title: "W1")
+        let w2 = MockWindowController(title: "W2")
+        let w3 = MockWindowController(title: "W3")
+
+        // Start: root has 3 windows
+        try root.addWindow(w1.windowId)
+        try root.addWindow(w2.windowId)
+        try root.addWindow(w3.windowId)
+        #expect(root.windowTabs.count == 3)
+
+        // Op 1: Split horizontally
+        let left = try root.split(direction: .Horizontal)
+        let right = root.children[1]
+        #expect(root.windowTabs.isEmpty)
+        #expect(left.windowTabs.count == 3)
+        #expect(right.windowTabs.isEmpty)
+
+        // Op 2: Split left vertically
+        let leftTop = try left.split(direction: .Vertical)
+        let leftBottom = left.children[1]
+        #expect(left.windowTabs.isEmpty)
+        #expect(leftTop.windowTabs.count == 3)
+        #expect(leftBottom.windowTabs.isEmpty)
+
+        // Op 3: Remove a window from leftTop
+        let removed = leftTop.removeWindow(w1.windowId)
+        #expect(removed == true)
+        #expect(leftTop.windowTabs.count == 2)
+
+        // Op 4: Close leftTop (consolidate back to left)
+        _ = try leftTop.closeFrame()
+        #expect(left.windowTabs.count == 2)
+        #expect(root.windowTabs.isEmpty) // root still non-leaf
+
+        // Op 5: Close right child (consolidate to root)
+        _ = try right.closeFrame()
+        #expect(root.windowTabs.count == 2) // now root is leaf with consolidated windows
+    }
+
+    @Test("Observer responds to rapid consecutive window operations")
+    func testObserverRespondsToRapidOperations() throws {
+        let frame = createFrameController()
+        var windowIds: [WindowId] = []
+
+        // Rapidly add 5 windows
+        for i in 1...5 {
+            let w = MockWindowController(title: "W\(i)")
+            try frame.addWindow(w.windowId)
+            windowIds.append(w.windowId)
+        }
+        #expect(frame.windowTabs.count == 5)
+
+        // Rapidly remove all
+        for windowId in windowIds {
+            _ = frame.removeWindow(windowId)
+        }
+        #expect(frame.windowTabs.isEmpty)
+
+        // Rapidly re-add different windows
+        for i in 6...10 {
+            let w = MockWindowController(title: "W\(i)")
+            try frame.addWindow(w.windowId)
+        }
+        #expect(frame.windowTabs.count == 5)
+    }
+
+    @Test("Observer subscription active across all frames after complex split pattern")
+    func testObserverSubscriptionsAcrossComplexSplitPattern() throws {
+        let root = createFrameController()
+        let w1 = MockWindowController(title: "W1")
+        let w2 = MockWindowController(title: "W2")
+        let w3 = MockWindowController(title: "W3")
+        let w4 = MockWindowController(title: "W4")
+
+        try root.addWindow(w1.windowId)
+        try root.addWindow(w2.windowId)
+        try root.addWindow(w3.windowId)
+        try root.addWindow(w4.windowId)
+
+        // Create 4-way split: H split, then V on each side
+        let leftHalf = try root.split(direction: .Horizontal)
+        let rightHalf = root.children[1]
+
+        let leftTop = try leftHalf.split(direction: .Vertical)
+        let leftBottom = leftHalf.children[1]
+
+        let rightTop = try rightHalf.split(direction: .Vertical)
+        let rightBottom = rightHalf.children[1]
+
+        // Verify all frames have active observers
+        let allFrames = [root, leftHalf, rightHalf, leftTop, leftBottom, rightTop, rightBottom]
+        for frame in allFrames {
+            let hasBinding = (frame.frameWindow as? FrameWindow)?.hasActiveBindings ?? false
+            #expect(hasBinding == true, "Frame should have active observer binding")
+        }
+
+        // Verify tab states are correct
+        #expect(root.windowTabs.isEmpty) // non-leaf
+        #expect(leftHalf.windowTabs.isEmpty) // non-leaf
+        #expect(rightHalf.windowTabs.isEmpty) // non-leaf
+        #expect(leftTop.windowTabs.count == 4) // leaf with all windows
+        #expect(leftBottom.windowTabs.isEmpty) // leaf, empty
+        #expect(rightTop.windowTabs.isEmpty) // leaf, empty
+        #expect(rightBottom.windowTabs.isEmpty) // leaf, empty
+    }
+
+    @Test("Observer handles window cycling with active state tracking")
+    func testObserverHandlesWindowCycling() throws {
+        let frame = createFrameController()
+        let w1 = MockWindowController(title: "W1")
+        let w2 = MockWindowController(title: "W2")
+        let w3 = MockWindowController(title: "W3")
+
+        try frame.addWindow(w1.windowId, shouldFocus: true)
+        #expect(frame.windowTabs.count == 1)
+        #expect(frame.windowTabs[0].isActive == true)
+
+        try frame.addWindow(w2.windowId, shouldFocus: false)
+        #expect(frame.windowTabs.count == 2)
+        #expect(frame.windowTabs[0].isActive == true)
+        #expect(frame.windowTabs[1].isActive == false)
+
+        try frame.addWindow(w3.windowId, shouldFocus: false)
+        #expect(frame.windowTabs.count == 3)
+
+        // Cycle forward
+        let next = frame.nextWindow()
+        #expect(next != nil)
+        // Observer should publish new active state
+        #expect(frame.windowTabs.count == 3)
+
+        // Cycle backward
+        let prev = frame.previousWindow()
+        #expect(prev != nil)
+        // Observer should publish updated active state
+        #expect(frame.windowTabs.count == 3)
+    }
+
+    @Test("Observer maintains correct state after frame consolidation from deep hierarchy")
+    func testObserverStateAfterDeepConsolidation() throws {
+        let root = createFrameController()
+        let w1 = MockWindowController(title: "W1")
+        let w2 = MockWindowController(title: "W2")
+
+        try root.addWindow(w1.windowId)
+        try root.addWindow(w2.windowId)
+
+        // Create a 3-level deep hierarchy: root -> mid -> leaf
+        let mid = try root.split(direction: .Horizontal)
+        let leaf = try mid.split(direction: .Vertical)
+        let leafSibling = mid.children[1]
+
+        // Verify initial state
+        #expect(root.windowTabs.isEmpty)
+        #expect(mid.windowTabs.isEmpty)
+        #expect(leaf.windowTabs.count == 2)
+        #expect(leafSibling.windowTabs.isEmpty)
+
+        // Close leaf - consolidates to mid
+        _ = try leaf.closeFrame()
+        // After close, mid is now a leaf with 2 windows
+        #expect(mid.windowTabs.count == 2)
+        #expect(root.windowTabs.isEmpty) // root still non-leaf
+
+        // Now mid has been consolidated back to a leaf. Close mid to consolidate to root
+        _ = try mid.closeFrame()
+        #expect(root.windowTabs.count == 2) // root is now leaf with all windows
+    }
+
+    @Test("Observer subscriptions don't leak when frames are deallocated")
+    func testObserverSubscriptionsCleanupOnDeallocation() throws {
+        weak var weakFrame: FrameController?
+        weak var weakFrameWindow: FrameWindow?
+
+        do {
+            let frame = createFrameController()
+            let frameWindow = frame.frameWindow as? FrameWindow
+            weakFrame = frame
+            weakFrameWindow = frameWindow
+
+            let w = MockWindowController(title: "W")
+            try frame.addWindow(w.windowId)
+
+            // Verify setup
+            #expect(weakFrame != nil)
+            #expect(weakFrameWindow != nil)
+            #expect(frameWindow?.hasActiveBindings == true)
+
+            // Exit scope - frame and window should deallocate
+        }
+
+        // Weak references should be nil, confirming no retain cycles
+        #expect(weakFrame == nil)
+        #expect(weakFrameWindow == nil)
+    }
 }
