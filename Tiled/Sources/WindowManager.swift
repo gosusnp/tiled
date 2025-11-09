@@ -89,9 +89,7 @@ class WindowManager {
     }
 
     func assignWindow(_ window: WindowController, shouldFocus: Bool) throws {
-        guard let frame = self.activeFrame else { return }
-        try frame.addWindow(window.windowId, shouldFocus: shouldFocus)
-        frame.refreshOverlay()
+        try frameManager?.assignWindow(window, shouldFocus: shouldFocus)
         if shouldFocus {
             // Give the window a moment to settle after resize/move before focusing
             usleep(50_000)  // 50ms delay
