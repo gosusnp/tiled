@@ -10,6 +10,9 @@ run:
 test:
 	make -C Tiled test
 
+test-with-coverage:
+	make -C Tiled test-with-coverage
+
 watch-run:
 	watchexec -r -e swift -w Tiled/Sources make run
 
