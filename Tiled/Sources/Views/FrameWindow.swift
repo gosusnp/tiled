@@ -3,6 +3,7 @@
 
 import Cocoa
 import ApplicationServices
+import Combine
 
 @MainActor
 class FrameWindow: FrameWindowProtocol {
@@ -10,6 +11,10 @@ class FrameWindow: FrameWindowProtocol {
     private var titleBarView: FrameTitleBarView? {
         window.contentView as? FrameTitleBarView
     }
+
+    // Observer pattern: weak reference to avoid retain cycles
+    private weak var frameController: FrameController?
+    private var cancellables = Set<AnyCancellable>()
 
     init(geo: FrameGeometry, styleProvider: StyleProvider) {
         let frame = FrameWindow.invertY(rect: geo.frameRect)
@@ -34,6 +39,30 @@ class FrameWindow: FrameWindowProtocol {
         panel.orderFront(nil)
 
         self.window = panel
+    }
+
+    /// Set the frame controller and establish observer bindings
+    /// This should be called by the factory or FrameController after creation
+    func setFrameController(_ frameController: FrameController) {
+        self.frameController = frameController
+        setupBindings()
+    }
+
+    /// Setup Combine subscriptions to observe frameController's published state
+    private func setupBindings() {
+        guard let frameController = frameController else { return }
+
+        // Subscribe to windowTabs changes
+        frameController.$windowTabs
+            .sink { [weak self] tabs in
+                self?.updateOverlay(tabs: tabs)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Check if bindings are active (for testing)
+    var hasActiveBindings: Bool {
+        !cancellables.isEmpty
     }
 
     func updateOverlay(tabs: [WindowTab]) {

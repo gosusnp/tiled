@@ -70,6 +70,7 @@ class FrameController {
         self.frameWindow = self.windowFactory.createFrameWindow(geometry: self.geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
         self.axHelper = axHelper
+        setupObservers()
     }
 
     /// Internal initializer for testing with custom window factory
@@ -81,6 +82,7 @@ class FrameController {
         self.frameWindow = windowFactory.createFrameWindow(geometry: self.geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
         self.axHelper = axHelper
+        setupObservers()
     }
 
     /// Internal initializer for child frames created during split
@@ -92,6 +94,15 @@ class FrameController {
         self.frameWindow = windowFactory.createFrameWindow(geometry: geometry)
         self.windowStack = WindowStackController(styleProvider: self.styleProvider)
         self.axHelper = axHelper
+        setupObservers()
+    }
+
+    /// Setup observer bindings between FrameController and FrameWindow
+    private func setupObservers() {
+        // Cast to FrameWindow to access setFrameController if it's a real window
+        if let frameWindow = self.frameWindow as? FrameWindow {
+            frameWindow.setFrameController(self)
+        }
     }
 
     func refreshOverlay() {
