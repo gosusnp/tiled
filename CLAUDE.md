@@ -43,7 +43,7 @@ Use dependency injection. Test behavior, not implementation.
 **Approach:**
 - Unit tests with mocks
 - Integration tests with real Accessibility API
-- Never mock AXUIElement in unit tests (see `docs/TESTING.md` - use real API instead)
+- ⚠️ **ObjectIdentifier(AXUIElement) → integration tests only** (signal 5 crash on ARM64e, see `docs/TESTING.md:129-140`)
 - TDD: write tests first (see Development Process section)
 
 See `docs/TESTING.md` for details.
