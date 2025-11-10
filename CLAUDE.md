@@ -70,8 +70,8 @@ Ask: "Do tests exist for this behavior?"
 ## Development Process - BLOCKING CHECKS - NON-NEGOTIABLE
 
 Before you mark any task complete or move to the next task, you MUST complete all items below. There are NO exceptions:
-1. [ ] YOU MUST run `make test` (swift test with the correct options) and confirm exit code 0
-2. [ ] YOU MUST explicitly ask user: "Task X is complete. Correct? Should we proceed?"
+1. [ ] ⚠️ YOU MUST run `make test` (swift test with the correct options) and confirm exit code 0
+2. [ ] ⚠️ **YOU MUST STOP and explicitly ask user**: "Task X is complete. Is it? Should we proceed to Task Y?"
 3. [ ] If uncertain about requirements, STOP and ask - do not assume
 4. [ ] If refactoring chains get long (>3 consecutive changes), STOP and ask: "Is there a
   simpler approach?"
