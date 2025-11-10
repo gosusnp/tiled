@@ -13,7 +13,7 @@ class MockWindowController: WindowControllerProtocol {
 
     nonisolated(unsafe) private static var elementCounter: Int = 1
 
-    nonisolated(unsafe) init(title: String) {
+    nonisolated init(title: String) {
         // Create a unique WindowModel for testing
         let pid = pid_t(Self.elementCounter)
         Self.elementCounter += 1
@@ -25,7 +25,7 @@ class MockWindowController: WindowControllerProtocol {
         self.windowId = WindowId(appPID: pid, registry: EmptyWindowRegistry())
     }
 
-    nonisolated(unsafe) init(windowId: WindowId) {
+    nonisolated init(windowId: WindowId) {
         Self.elementCounter += 1
 
         // For tests, we need a WindowId but WindowId's registry parameter is @MainActor isolated.
