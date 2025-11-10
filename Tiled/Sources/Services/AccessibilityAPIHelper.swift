@@ -234,7 +234,7 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
         )
 
         if result == .success {
-            return focusedRef as! AXUIElement
+            return (focusedRef as! AXUIElement)
         }
         return nil
     }

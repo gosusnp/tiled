@@ -146,7 +146,7 @@ struct WindowIdDeduplicationTests {
         // If we got a cgWindowID on first registration, we can't simulate the partial case
         // But if we didn't, verify it's stored as partial
         if windowId1?.cgWindowID == nil {
-            #expect(true, "Got partial WindowId as expected")
+            #expect(Bool(true), "Got partial WindowId as expected")
         }
 
         // Second registration: different AXUIElement reference (simulates poller re-discovering)

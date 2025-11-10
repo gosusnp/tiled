@@ -121,7 +121,7 @@ struct WindowPollingServiceTests {
         service.stopPolling()
 
         // If we reach here without crashing, test passes
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 
