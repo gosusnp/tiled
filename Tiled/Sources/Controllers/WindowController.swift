@@ -30,7 +30,11 @@ class WindowController: WindowControllerProtocol {
 
     func reposition(to rect: CGRect) throws {
         guard let element = windowId.getCurrentElement() else { throw WindowError.invalidWindow }
-        try axHelper.resize(element, size: rect.size)
+        // Move first, then resize. This prevents the app from auto-correcting the size
+        // if the large window at the original position doesn't fit on screen.
+        // By moving to the target position first, we give the app the correct context
+        // for what size constraints apply at the destination location.
         try axHelper.move(element, to: rect.origin)
+        try axHelper.resize(element, size: rect.size)
     }
 }
