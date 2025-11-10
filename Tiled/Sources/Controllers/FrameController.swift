@@ -172,6 +172,18 @@ class FrameController {
         return activeWindowId
     }
 
+    /// Shift the active window left in the tab order
+    func shiftActiveWindowLeft() {
+        self.windowStack.shiftActiveLeft()
+        self.updateWindowTabs()
+    }
+
+    /// Shift the active window right in the tab order
+    func shiftActiveWindowRight() {
+        self.windowStack.shiftActiveRight()
+        self.updateWindowTabs()
+    }
+
     func takeWindowsFrom(_ other: FrameController) throws {
         // Transfer windows to this frame's stack
         try self.windowStack.takeAll(from: other.windowStack)

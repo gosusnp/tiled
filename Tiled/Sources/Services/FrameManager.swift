@@ -265,6 +265,10 @@ class FrameManager {
             nextWindow()
         case .cycleWindowBackward:
             previousWindow()
+        case .shiftWindowLeft:
+            activeFrame?.shiftActiveWindowLeft()
+        case .shiftWindowRight:
+            activeFrame?.shiftActiveWindowRight()
         case .addWindow(let window):
             guard let frame = activeFrame else { return }
             try frame.addWindow(window.windowId, shouldFocus: false)

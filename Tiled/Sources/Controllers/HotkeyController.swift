@@ -177,5 +177,29 @@ class HotkeyController: ObservableObject, @unchecked Sendable {
                 }
             }
         )
+
+        service.addShortcut(
+            steps: [
+                (.character(","), [.maskCommand, .maskControl]),
+            ],
+            description: "cmd+ctrl+,: shift active window left in frame",
+            action: {
+                Task { @MainActor in
+                    try wm.shiftActiveWindowLeft()
+                }
+            }
+        )
+
+        service.addShortcut(
+            steps: [
+                (.character("."), [.maskCommand, .maskControl]),
+            ],
+            description: "cmd+ctrl+.: shift active window right in frame",
+            action: {
+                Task { @MainActor in
+                    try wm.shiftActiveWindowRight()
+                }
+            }
+        )
     }
 }

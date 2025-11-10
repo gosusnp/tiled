@@ -27,6 +27,10 @@ enum FrameCommand {
     case cycleWindowForward
     case cycleWindowBackward
 
+    // Window reordering
+    case shiftWindowLeft
+    case shiftWindowRight
+
     // Window management
     case addWindow(WindowControllerProtocol)
     case removeWindow(WindowControllerProtocol)

@@ -94,6 +94,19 @@ class WindowStackController {
         activeIndex = activeIndex == 0 ? windowIds.count - 1 : activeIndex - 1
         return windowIds[activeIndex]
     }
+
+    // Window shifting
+    func shiftActiveLeft() {
+        guard activeIndex > 0 else { return }
+        windowIds.swapAt(activeIndex, activeIndex - 1)
+        activeIndex -= 1
+    }
+
+    func shiftActiveRight() {
+        guard activeIndex < windowIds.count - 1 else { return }
+        windowIds.swapAt(activeIndex, activeIndex + 1)
+        activeIndex += 1
+    }
 }
 
 enum WindowStackError: Error {

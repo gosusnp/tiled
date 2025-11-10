@@ -156,6 +156,16 @@ class WindowManager {
         frameManager?.enqueueCommand(.moveWindowDown)
     }
 
+    // MARK: - Shift Window Operations
+
+    func shiftActiveWindowLeft() throws {
+        frameManager?.enqueueCommand(.shiftWindowLeft)
+    }
+
+    func shiftActiveWindowRight() throws {
+        frameManager?.enqueueCommand(.shiftWindowRight)
+    }
+
     // MARK: - Layout
 
     private func inspectLayout() {

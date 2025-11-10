@@ -328,4 +328,182 @@ struct WindowStackControllerTests {
         #expect(stack.getActiveWindowId() === windowId1)
         #expect(stack.count == 2)
     }
+
+    @Test("Shifts active window left")
+    func testShiftActiveWindowLeft() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
+        let windowId2 = WindowId(appPID: 1235, registry: mockRegistry)
+        let windowId3 = WindowId(appPID: 1236, registry: mockRegistry)
+
+        try stack.add(windowId1)
+        try stack.add(windowId2)
+        try stack.add(windowId3)
+
+        // Start at index 2 (windowId3)
+        stack.nextWindow()
+        stack.nextWindow()
+        #expect(stack.activeIndex == 2)
+        #expect(stack.getActiveWindowId() === windowId3)
+        #expect(stack.allWindowIds == [windowId1, windowId2, windowId3])
+
+        // Shift left: windowId3 should swap with windowId2 and become active
+        stack.shiftActiveLeft()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.getActiveWindowId() === windowId3)
+        #expect(stack.allWindowIds == [windowId1, windowId3, windowId2])
+    }
+
+    @Test("Shift left does nothing at start of list")
+    func testShiftActiveWindowLeftAtStart() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
+        let windowId2 = WindowId(appPID: 1235, registry: mockRegistry)
+
+        try stack.add(windowId1)
+        try stack.add(windowId2)
+
+        #expect(stack.activeIndex == 0)
+        #expect(stack.getActiveWindowId() === windowId1)
+
+        // Try to shift left when already at start - should do nothing
+        stack.shiftActiveLeft()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.getActiveWindowId() === windowId1)
+        #expect(stack.allWindowIds == [windowId1, windowId2])
+    }
+
+    @Test("Shifts active window right")
+    func testShiftActiveWindowRight() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
+        let windowId2 = WindowId(appPID: 1235, registry: mockRegistry)
+        let windowId3 = WindowId(appPID: 1236, registry: mockRegistry)
+
+        try stack.add(windowId1)
+        try stack.add(windowId2)
+        try stack.add(windowId3)
+
+        // Start at index 0 (windowId1)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.getActiveWindowId() === windowId1)
+        #expect(stack.allWindowIds == [windowId1, windowId2, windowId3])
+
+        // Shift right: windowId1 should swap with windowId2
+        stack.shiftActiveRight()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.getActiveWindowId() === windowId1)
+        #expect(stack.allWindowIds == [windowId2, windowId1, windowId3])
+    }
+
+    @Test("Shift right does nothing at end of list")
+    func testShiftActiveWindowRightAtEnd() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
+        let windowId2 = WindowId(appPID: 1235, registry: mockRegistry)
+
+        try stack.add(windowId1)
+        try stack.add(windowId2)
+
+        stack.nextWindow()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.getActiveWindowId() === windowId2)
+
+        // Try to shift right when already at end - should do nothing
+        stack.shiftActiveRight()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.getActiveWindowId() === windowId2)
+        #expect(stack.allWindowIds == [windowId1, windowId2])
+    }
+
+    @Test("Shift left with single window does nothing")
+    func testShiftActiveWindowLeftWithSingleWindow() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId = WindowId(appPID: 1234, registry: mockRegistry)
+
+        try stack.add(windowId)
+        #expect(stack.activeIndex == 0)
+
+        stack.shiftActiveLeft()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.allWindowIds == [windowId])
+    }
+
+    @Test("Shift right with single window does nothing")
+    func testShiftActiveWindowRightWithSingleWindow() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId = WindowId(appPID: 1234, registry: mockRegistry)
+
+        try stack.add(windowId)
+        #expect(stack.activeIndex == 0)
+
+        stack.shiftActiveRight()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.allWindowIds == [windowId])
+    }
+
+    @Test("Multiple shifts left")
+    func testMultipleShiftsLeft() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
+        let windowId2 = WindowId(appPID: 1235, registry: mockRegistry)
+        let windowId3 = WindowId(appPID: 1236, registry: mockRegistry)
+        let windowId4 = WindowId(appPID: 1237, registry: mockRegistry)
+
+        try stack.add(windowId1)
+        try stack.add(windowId2)
+        try stack.add(windowId3)
+        try stack.add(windowId4)
+
+        // Start at index 3 (windowId4)
+        for _ in 0..<3 {
+            stack.nextWindow()
+        }
+        #expect(stack.activeIndex == 3)
+        #expect(stack.allWindowIds == [windowId1, windowId2, windowId3, windowId4])
+
+        // Shift left 3 times
+        stack.shiftActiveLeft()
+        #expect(stack.activeIndex == 2)
+        #expect(stack.allWindowIds == [windowId1, windowId2, windowId4, windowId3])
+
+        stack.shiftActiveLeft()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.allWindowIds == [windowId1, windowId4, windowId2, windowId3])
+
+        stack.shiftActiveLeft()
+        #expect(stack.activeIndex == 0)
+        #expect(stack.allWindowIds == [windowId4, windowId1, windowId2, windowId3])
+    }
+
+    @Test("Multiple shifts right")
+    func testMultipleShiftsRight() throws {
+        let stack = WindowStackController(styleProvider: mockStyleProvider)
+        let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
+        let windowId2 = WindowId(appPID: 1235, registry: mockRegistry)
+        let windowId3 = WindowId(appPID: 1236, registry: mockRegistry)
+        let windowId4 = WindowId(appPID: 1237, registry: mockRegistry)
+
+        try stack.add(windowId1)
+        try stack.add(windowId2)
+        try stack.add(windowId3)
+        try stack.add(windowId4)
+
+        // Start at index 0 (windowId1)
+        #expect(stack.activeIndex == 0)
+        #expect(stack.allWindowIds == [windowId1, windowId2, windowId3, windowId4])
+
+        // Shift right 3 times
+        stack.shiftActiveRight()
+        #expect(stack.activeIndex == 1)
+        #expect(stack.allWindowIds == [windowId2, windowId1, windowId3, windowId4])
+
+        stack.shiftActiveRight()
+        #expect(stack.activeIndex == 2)
+        #expect(stack.allWindowIds == [windowId2, windowId3, windowId1, windowId4])
+
+        stack.shiftActiveRight()
+        #expect(stack.activeIndex == 3)
+        #expect(stack.allWindowIds == [windowId2, windowId3, windowId4, windowId1])
+    }
 }
