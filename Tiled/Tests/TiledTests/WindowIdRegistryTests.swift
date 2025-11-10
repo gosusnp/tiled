@@ -176,6 +176,15 @@ struct MemoryManagementTests {
     // Tests moved to integration tests - see WindowIdStaleElementTests.swift
 }
 
+// MARK: - Note: Deduplication Tests Moved to Integration Tests
+//
+// Tests for cgWindowID-based deduplication with different AXUIElement references
+// have been moved to TiledIntegrationTests/WindowIdDeduplicationTests.swift
+//
+// Reason: ObjectIdentifier(element) with mock AXUIElement pointers crashes on ARM64e
+// due to pointer authentication. These tests require real AXUIElement instances from
+// the macOS Accessibility API. See docs/TESTING.md for details.
+
 // MARK: - Integration Tests
 
 /// Tests requiring real AXUIElement instances from the macOS Accessibility API.

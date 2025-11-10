@@ -133,6 +133,17 @@ class DefaultWindowRegistry: WindowRegistry {
         guard let appPID = axHelper.getAppPID(element) else { return nil }
         let cgWindowID = axHelper.getWindowID(element)
 
+        // DEDUPLICATION FIX: Check if we already have a complete WindowId for this cgWindowID
+        // This handles the case where observer sends element1 (no cgWindowID), then poller sends
+        // element2 (different AXUIElement ref, but same cgWindowID). Both represent the same window.
+        if let cgWindowID,
+           let existing = windowIdByCGWindowID[cgWindowID] {
+            // Update element mapping for existing WindowId (additive)
+            windowIdByElement[ObjectIdentifier(element)] = existing
+            elementByWindowId[existing.id] = element
+            return existing
+        }
+
         // Check if this matches an existing partial WindowId (same appPID, no cgWindowID yet)
         if let partial = partialWindowIds[appPID],
            partial.cgWindowID == nil,

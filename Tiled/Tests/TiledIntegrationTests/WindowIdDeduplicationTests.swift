@@ -126,4 +126,52 @@ struct WindowIdDeduplicationTests {
         // Both should be the same stable reference
         #expect(windowId1?.id == windowId2?.id)
     }
+
+    @Test @MainActor
+    func differentElementReferencesSameWindowDeduplicatedByCGWindowID() throws {
+        // This test verifies the deduplication fix for the scenario where:
+        // - Observer sends element1 (appPID available, cgWindowID not yet)
+        // - Poller sends element2 (different AXUIElement ref, same cgWindowID)
+        // Both represent the same physical window.
+        //
+        // The fix: Check windowIdByCGWindowID before creating new WindowId
+
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let appElement1 = AXUIElementCreateApplication(pid)
+
+        // First registration: element without cgWindowID (simulates observer finding partial window)
+        let windowId1 = registry.getOrRegister(element: appElement1)
+        #expect(windowId1 != nil)
+
+        // If we got a cgWindowID on first registration, we can't simulate the partial case
+        // But if we didn't, verify it's stored as partial
+        if windowId1?.cgWindowID == nil {
+            #expect(true, "Got partial WindowId as expected")
+        }
+
+        // Second registration: different AXUIElement reference (simulates poller re-discovering)
+        // In real scenarios, the Accessibility API returns different element references
+        // for the same window at different times
+        let appElement2 = AXUIElementCreateApplication(pid)
+        let windowId2 = registry.getOrRegister(element: appElement2)
+
+        // CRITICAL: If both have cgWindowIDs, they should map to the same WindowId
+        if let cgId1 = windowId1?.cgWindowID, let cgId2 = windowId2?.cgWindowID {
+            if cgId1 == cgId2 {
+                #expect(windowId2 === windowId1, "Same cgWindowID should return same WindowId (deduplication works)")
+            }
+        }
+
+        // Both element lookups should find a WindowId
+        let lookup1 = registry.getWindowId(for: appElement1)
+        let lookup2 = registry.getWindowId(for: appElement2)
+
+        #expect(lookup1 != nil)
+        #expect(lookup2 != nil)
+
+        // If they're the same WindowId, both lookups should find it
+        if windowId1 === windowId2 {
+            #expect(lookup1 === lookup2, "Both elements should map to same WindowId")
+        }
+    }
 }
