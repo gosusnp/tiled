@@ -98,7 +98,7 @@ class WindowPollingService: @unchecked Sendable {
 
             // Create DispatchSourceTimer (independent of run loop mode)
             let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-            timer.schedule(wallDeadline: .now() + 7.0, repeating: 7.0)
+            timer.schedule(wallDeadline: .now() + 3.0, repeating: 3.0)
             timer.setEventHandler { [weak self] in
                 self?.performPollingValidation()
             }
@@ -107,7 +107,7 @@ class WindowPollingService: @unchecked Sendable {
 
             self.pollingRunning = true
 
-            self.logger.info("Window polling started with 7-second interval")
+            self.logger.info("Window polling started with 3-second interval")
         }
     }
 
