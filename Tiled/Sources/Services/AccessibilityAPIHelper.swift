@@ -14,6 +14,10 @@ protocol AccessibilityAPIHelper {
     /// Extract CGWindowID from an AXUIElement by geometry matching
     func getWindowID(_ element: AXUIElement) -> CGWindowID?
 
+    /// Extract CGWindowID from an AXUIElement using a pre-fetched window list
+    /// This avoids repeated CGWindowListCopyWindowInfo calls during polling
+    func getWindowID(_ element: AXUIElement, cachedWindowList: [[String: Any]]) -> CGWindowID?
+
     /// Extract Window Title from AXUIElement
     func getWindowTitle(_ element: AXUIElement) -> String
 
@@ -58,6 +62,19 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
     }
 
     func getWindowID(_ element: AXUIElement) -> CGWindowID? {
+        // Get the CGWindowList (this is the expensive operation)
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return nil
+        }
+
+        // Use the cached version
+        return getWindowID(element, cachedWindowList: windowList)
+    }
+
+    func getWindowID(_ element: AXUIElement, cachedWindowList: [[String: Any]]) -> CGWindowID? {
         // Get the PID of the window
         var pid: pid_t = 0
         AXUIElementGetPid(element, &pid)
@@ -82,15 +99,8 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
         var size = CGSize.zero
         AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
 
-        // Search CGWindowList for a window matching this PID and bounds
-        guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
-            return nil
-        }
-
-        for windowInfo in windowList {
+        // Search provided CGWindowList for a window matching this PID and bounds
+        for windowInfo in cachedWindowList {
             // Check PID
             if let windowPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t, windowPID == pid {
                 // PID matches, continue to check bounds

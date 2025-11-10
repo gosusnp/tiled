@@ -57,6 +57,10 @@ class MockAccessibilityAPIHelper: @preconcurrency AccessibilityAPIHelper {
         getWindowIDResult
     }
 
+    func getWindowID(_ element: AXUIElement, cachedWindowList: [[String: Any]]) -> CGWindowID? {
+        getWindowIDResult
+    }
+
     func isElementValid(_ element: AXUIElement) -> Bool {
         isElementValidResult
     }

@@ -19,6 +19,10 @@ class TestAccessibilityAPIHelper: AccessibilityAPIHelper {
         return windowIDMap[ObjectIdentifier(element)]
     }
 
+    func getWindowID(_ element: AXUIElement, cachedWindowList: [[String: Any]]) -> CGWindowID? {
+        return windowIDMap[ObjectIdentifier(element)]
+    }
+
     func getWindowTitle(_ element: AXUIElement) -> String {
         return "Test Window"
     }

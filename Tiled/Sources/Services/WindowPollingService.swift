@@ -173,10 +173,18 @@ class WindowPollingService: @unchecked Sendable {
         // Get current focus
         let currentFocus = getFocusedWindowForPolling()
 
+        // Get CGWindowList once for all lookups (major optimization)
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return
+        }
+
         // Build map of current windows by CGWindowID (pure state comparison)
         var currentWindowMap: [CGWindowID: AXUIElement] = [:]
         for window in currentWindows {
-            if let windowID = axHelper.getWindowID(window) {
+            if let windowID = axHelper.getWindowID(window, cachedWindowList: windowList) {
                 currentWindowMap[windowID] = window
             }
         }
