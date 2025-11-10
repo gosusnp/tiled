@@ -85,7 +85,16 @@ Binary tree of frames. Leaf frames contain windows.
 
 ### Views
 
-Read-only access to FrameManager state. Never mutate.
+Observe model state via Combine `@Published` properties. React automatically to changes.
+
+**Pattern:**
+- FrameWindow holds weak reference to FrameController
+- `setupBindings()` establishes Combine subscriptions
+- Views update when `@Published` properties change
+
+**Key invariant:** Views never mutate model. All changes flow through command queue.
+
+See "Reactive View Updates" section for implementation details.
 
 ---
 
@@ -124,22 +133,46 @@ All flow through command queue. Each command executes atomically with no interle
 
 ---
 
-## Note: UI Separation (Future)
+## Reactive View Updates
 
-Currently, frame operations call `refreshOverlay()` directly. This is a leaky abstraction.
+Views observe model state via Combine `@Published` properties and react automatically to changes.
 
-Better approach: After command executes, have the processor notify views to update independently. Keep business logic separate from UI concerns.
+**Pattern:**
+- FrameController publishes state via `@Published` (e.g., `windowTabs`, `geometry`)
+- FrameWindow observes via `setupBindings()` using weak references (prevents retain cycles)
+- State changes trigger observers; views update without imperative calls
 
+**Example flow:**
 ```swift
-// Future:
-private func processQueue() async {
-    while let command = commandQueue.removeFirst() {
-        do {
-            try await executeCommand(command)
-            notifyViewsOfStateChange()  // Views observe and update
-        } catch {
-            logger.error("Command execution failed: \(error)")
-        }
+// FrameController (Model)
+@MainActor
+class FrameController {
+    @Published var windowTabs: [WindowTab] = []
+
+    private func updateWindowTabs() {
+        self.windowTabs = computeWindowTabs()
+        // @Published automatically notifies observers
+    }
+}
+
+// FrameWindow (View)
+class FrameWindow {
+    private weak var frameController: FrameController?
+
+    func setupBindings() {
+        frameController?.$windowTabs
+            .sink { [weak self] tabs in
+                // View reacts: update or clear based on tabs
+                tabs.isEmpty ? self?.clear() : self?.updateOverlay(tabs: tabs)
+            }
+            .store(in: &cancellables)
     }
 }
 ```
+
+**Why this pattern:**
+- **Decoupling:** Controllers don't know about views, only publish state
+- **Consistency:** Views always reflect current model state automatically
+- **Simplicity:** No manual refresh orchestration; Combine handles propagation
+
+**Geometry cascade:** When parent geometry changes, `setGeometryRecursive()` updates `@Published geometry` at each node. Each node's observer fires, triggering its view to reposition. Entire tree synchronizes in one operation.

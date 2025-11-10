@@ -78,6 +78,49 @@ func closeFrame() throws -> FrameController? {
 
 ---
 
+## 4. Reactive View Updates
+
+Views observe model state and update automatically via Combine `@Published` properties.
+
+**Why:** Eliminates imperative view refresh calls. Controllers publish state; views react. Guarantees UI consistency without manual synchronization.
+
+```swift
+// Controller publishes state
+@MainActor
+class FrameController {
+    @Published var windowTabs: [WindowTab] = []
+
+    func addWindow(_ windowId: WindowId) throws {
+        try windowStack.add(windowId)
+        updateWindowTabs()  // @Published fires, views react automatically
+    }
+}
+
+// View observes and reacts
+class FrameWindow {
+    func setupBindings() {
+        frameController?.$windowTabs
+            .sink { [weak self] tabs in
+                tabs.isEmpty ? self?.clear() : self?.updateOverlay(tabs: tabs)
+            }
+            .store(in: &cancellables)
+    }
+}
+```
+
+**Key points:**
+- **Weak references:** Views hold weak references to controllers to prevent retain cycles
+- **Automatic propagation:** State change → `@Published` fires → observer reacts → view updates
+- **Recursive cascade:** Geometry changes propagate via `setGeometryRecursive()`:
+  - Each node updates its `@Published geometry`
+  - Each node's observer fires, updating its view
+  - Each node recursively updates children
+  - Entire tree synchronized in one operation
+
+**Never:** Call view update methods directly from controllers (e.g., `frameWindow.updateOverlay()`). Publish state changes via `@Published` instead.
+
+---
+
 ## Separation of Concerns
 
 **Business Logic** (FrameController, FrameNavigationService)
@@ -99,9 +142,10 @@ func closeFrame() throws -> FrameController? {
 - WindowTracker delegates to WindowRegistry for discovery
 - Independent from command processor
 
-**Display** (FrameWindowController, Views)
-- Read-only access to model
-- No mutations
+**Display** (FrameWindow, Views)
+- Observe model via `@Published` properties
+- Weak references prevent retain cycles
+- React automatically to state changes; no imperative refresh calls
 
 ---
 
@@ -186,5 +230,8 @@ var windows: [WindowIdKey: WindowController] = [:]
 | **Single Entry** | All changes via `enqueueCommand()` | Predictable, serialized, auditable |
 | **Straightforward Operations** | Queue ensures serialized execution | No concurrent mutations, clear code |
 | **Graceful Error Handling** | Recover on failure, never crash | Users keep working, logging for debugging |
+| **Reactive Views** | Views observe `@Published` properties | Automatic consistency, no manual refresh calls |
 
 The command queue is the core solution. By serializing all state mutations on MainActor, we eliminate race conditions. When unexpected things happen (edge cases, transient errors), the system recovers gracefully and logs what happened.
+
+The reactive view pattern ensures UI stays synchronized with model. Views observe model state via Combine and update automatically—no imperative refresh orchestration needed.
