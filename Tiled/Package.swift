@@ -25,7 +25,7 @@ let package = Package(
             path: "Tests/TiledIntegrationTests"
         ),
     ],
-    swiftLanguageVersions: [.v6]
+    swiftLanguageModes: [.v6]
 )
 
 // Configure product name
