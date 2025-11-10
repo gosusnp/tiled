@@ -112,12 +112,20 @@ See "Reactive View Updates" section for implementation details.
 
 ### External Window Appears
 1. macOS creates window
-2. WindowPoller detects, enqueues `FrameCommand.addWindow(window)`
-3. Command processor dequeues command
-4. executeCommand(.addWindow) runs atomically:
-   - Wraps AXUIElement as WindowController
+2. WindowObserver or WindowPoller detects AXUIElement
+3. WindowTracker delegates to `WindowRegistry.getOrCreateRecord()`:
+   - Bridges AXUIElement → `WindowId(appPID, cgWindowID?)`
+   - Creates WindowController holding stable WindowId (not element)
+   - `cgWindowID` may be nil if geometry matching fails (partial)
+4. Enqueues `FrameCommand.windowAppeared(windowId)`
+5. Command processor dequeues command
+6. executeCommand(.windowAppeared) runs atomically:
+   - Looks up WindowController by WindowId
    - Assigns to active frame
-   - Updates UI
+   - Updates windowTabs via @Published (view observers react)
+7. Later (7s polling): If partial WindowId, polling completes it
+   - Same WindowController instance, no duplication
+   - View already rendering; no refresh needed
 
 ---
 
@@ -176,3 +184,52 @@ class FrameWindow {
 - **Simplicity:** No manual refresh orchestration; Combine handles propagation
 
 **Geometry cascade:** When parent geometry changes, `setGeometryRecursive()` updates `@Published geometry` at each node. Each node's observer fires, triggering its view to reposition. Entire tree synchronizes in one operation.
+
+---
+
+## Window Identification Strategy
+
+Windows are identified by a stable compound key instead of unstable AXUIElement references.
+
+**The problem with AXUIElement:**
+- Event-driven: observer fires, gives you an element reference
+- Unstable: same window produces different element objects
+- Can't use as dictionary key (lookup fails on next event)
+- Becomes stale: can't reuse after observer cycle
+
+**The solution: WindowId**
+
+```swift
+class WindowId {
+    let appPID: pid_t              // Always available
+    let cgWindowID: CGWindowID?    // May be nil (partial) or complete
+}
+```
+
+**Compound key enables async discovery:**
+- **Observer fires** (real-time): AXUIElement detected
+  - WindowRegistry bridges element → WindowId
+  - `cgWindowID` may be nil if geometry lookup fails
+  - Creates WindowController holding WindowId (stable)
+  - Enqueues command with WindowId
+
+- **Command executes** (immediately): Frame assignment via WindowId
+  - Works whether WindowId is partial or complete
+  - View renders; no need to wait
+
+- **Polling completes** (7s later): `cgWindowID` becomes available
+  - Same WindowId instance (same appPID)
+  - Upgrades from partial → complete
+  - No duplication, no state corruption
+
+**Why this pattern works:**
+- Deduplicates windows: same `(appPID, cgWindowID)` = same window
+- Handles async discovery: partial WindowIds work immediately
+- Stable across events: WindowId doesn't change, element reference does
+- Integrates with reactive views: models track windows via stable WindowId
+
+**Where WindowId is used:**
+- FrameManager keeps `[WindowId: WindowController]` mapping
+- FrameController.windowStack stores WindowControllers (which hold WindowIds)
+- Views observe @Published properties that reference windows
+- Never store raw AXUIElement in controllers/models
