@@ -233,7 +233,7 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
             &focusedRef
         )
 
-        if result == .success, focusedRef != nil {
+        if result == .success {
             return focusedRef as! AXUIElement
         }
         return nil
