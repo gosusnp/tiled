@@ -228,7 +228,7 @@ struct FrameNavigationServiceTests {
         // Create: left1 -> (topLeft1, bottomLeft1) [horizontal]
         _ = try left1.split(direction: .Horizontal)
         let topLeft1 = left1.children[0]
-        let bottomLeft1 = left1.children[1]
+        let _ = left1.children[1]
 
         // Create: topLeft1 -> (topLeftLeft, topLeftRight) [vertical]
         _ = try topLeft1.split(direction: .Vertical)

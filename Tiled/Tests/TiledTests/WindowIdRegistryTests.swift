@@ -105,7 +105,7 @@ struct WindowIdStateTests {
 
     @Test func windowIdEqualityBasedOnId() {
         let windowId1 = WindowId(appPID: 1234, registry: registry)
-        let id1 = windowId1.id
+        let _ = windowId1.id
 
         // Create another reference to test equality by identity
         let windowId2 = windowId1

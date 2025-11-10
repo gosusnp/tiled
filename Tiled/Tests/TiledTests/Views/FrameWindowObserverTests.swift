@@ -115,10 +115,9 @@ struct FrameWindowObserverTests {
     @Test("FrameWindow observer updates when windowTabs changes")
     func testFrameWindowUpdatesOnWindowTabsChange() throws {
         let frameController = createFrameController()
-        let frameWindow = frameController.frameWindow as? FrameWindow
 
-        #expect(frameWindow != nil)
-        guard let frameWindow = frameWindow else { return }
+        #expect(frameController.frameWindow as? FrameWindow != nil)
+        guard frameController.frameWindow as? FrameWindow != nil else { return }
 
         let window1 = MockWindowController(title: "Window 1")
         let window2 = MockWindowController(title: "Window 2")

@@ -377,11 +377,10 @@ struct FrameManagerTests {
 
         // Get the child frames - they should have real FrameWindow instances
         let child1 = root.children[0]
-        let child2 = root.children[1]
+        let _ = root.children[1]
 
         // Child frames should exist and have frameWindow instances
-        #expect(child1 != nil)
-        #expect(child2 != nil)
+        #expect(child1.parent != nil)
     }
 
     @Test("Only leaf frames show tabs after split")
@@ -692,7 +691,7 @@ struct FrameManagerTests {
         // Split and add second window to new frame
         try frameManager.splitHorizontally()
         let leftChild = frameManager.activeFrame
-        let rightChild = rootFrame.children[1]
+        let _ = rootFrame.children[1]
 
         let window2 = MockWindowController(title: "Window 2")
         frameManager.registerExistingWindow(window2, windowId: window2.windowId)

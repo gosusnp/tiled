@@ -150,8 +150,8 @@ struct WindowStackControllerTests {
         try stack.add(windowId2)
         try stack.add(windowId3)
 
-        stack.nextWindow()
-        stack.nextWindow()
+        _ = stack.nextWindow()
+        _ = stack.nextWindow()
         #expect(stack.activeIndex == 2)
 
         // Remove middle window
@@ -171,7 +171,7 @@ struct WindowStackControllerTests {
         try stack.add(windowId1)
         try stack.add(windowId2)
 
-        stack.nextWindow()
+        _ = stack.nextWindow()
         #expect(stack.activeIndex == 1)
 
         // Remove the active window (last one)
@@ -200,7 +200,7 @@ struct WindowStackControllerTests {
     func testNextWindowOnEmpty() {
         let stack = WindowStackController(styleProvider: mockStyleProvider)
 
-        stack.nextWindow()
+        _ = stack.nextWindow()
         #expect(stack.activeIndex == 0)
         #expect(stack.getActiveWindowId() == nil)
     }
@@ -209,7 +209,7 @@ struct WindowStackControllerTests {
     func testPreviousWindowOnEmpty() {
         let stack = WindowStackController(styleProvider: mockStyleProvider)
 
-        stack.previousWindow()
+        _ = stack.previousWindow()
         #expect(stack.activeIndex == 0)
         #expect(stack.getActiveWindowId() == nil)
     }
@@ -341,8 +341,8 @@ struct WindowStackControllerTests {
         try stack.add(windowId3)
 
         // Start at index 2 (windowId3)
-        stack.nextWindow()
-        stack.nextWindow()
+        _ = stack.nextWindow()
+        _ = stack.nextWindow()
         #expect(stack.activeIndex == 2)
         #expect(stack.getActiveWindowId() === windowId3)
         #expect(stack.allWindowIds == [windowId1, windowId2, windowId3])
@@ -405,7 +405,7 @@ struct WindowStackControllerTests {
         try stack.add(windowId1)
         try stack.add(windowId2)
 
-        stack.nextWindow()
+        _ = stack.nextWindow()
         #expect(stack.activeIndex == 1)
         #expect(stack.getActiveWindowId() === windowId2)
 
@@ -457,7 +457,7 @@ struct WindowStackControllerTests {
 
         // Start at index 3 (windowId4)
         for _ in 0..<3 {
-            stack.nextWindow()
+            _ = stack.nextWindow()
         }
         #expect(stack.activeIndex == 3)
         #expect(stack.allWindowIds == [windowId1, windowId2, windowId3, windowId4])

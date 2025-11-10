@@ -276,7 +276,7 @@ class FrameManager {
         case .removeWindow(let window):
             let _ = activeFrame?.removeWindow(window.windowId)
             // State change triggers observer; no explicit UI refresh needed
-        case .focusWindow(let window):
+        case .focusWindow:
             // TODO Implement
             return
         case .windowAppeared(let window, let windowId):

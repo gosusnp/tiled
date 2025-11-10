@@ -90,7 +90,7 @@ struct WindowManagerTests {
         try frameManager.assignWindow(window2)
 
         // Navigate to second window
-        frame.nextWindow()
+        _ = frame.nextWindow()
         #expect(frame.windowStack.activeIndex == 1)
 
         // Close the active window by enqueuing command

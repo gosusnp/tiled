@@ -43,7 +43,7 @@ struct FrameControllerTests {
         #expect(!window1.raiseWasCalled)
 
         // After nextWindow, active index should change
-        frameController.nextWindow()
+        _ = frameController.nextWindow()
         #expect(frameController.windowStack.activeIndex == 1)
     }
 
@@ -58,11 +58,11 @@ struct FrameControllerTests {
         try frameController.addWindow(window2.windowId)
 
         // Start at window1, cycle back to window2
-        frameController.previousWindow()
+        _ = frameController.previousWindow()
         #expect(frameController.windowStack.activeIndex == 1)
 
         // Cycle back to window1
-        frameController.previousWindow()
+        _ = frameController.previousWindow()
         #expect(frameController.windowStack.activeIndex == 0)
     }
 
@@ -85,7 +85,7 @@ struct FrameControllerTests {
         let frameController = createFrameController()
 
         // Should not crash when calling nextWindow on empty frame
-        frameController.nextWindow()
+        _ = frameController.nextWindow()
         #expect(frameController.windowStack.count == 0)
     }
 
@@ -102,7 +102,7 @@ struct FrameControllerTests {
         try frameController.addWindow(window3.windowId)
 
         // Navigate to second window
-        frameController.nextWindow()
+        _ = frameController.nextWindow()
 
         // Remove the active window
         let removed = frameController.removeWindow(window2.windowId)
@@ -168,7 +168,7 @@ struct FrameControllerTests {
 
         // Create split - parent now has two children
         let child1 = try parent.split(direction: .Vertical)
-        let child2 = parent.children[1]
+        let _ = parent.children[1]
 
         #expect(parent.children.count == 2)
 
@@ -187,7 +187,7 @@ struct FrameControllerTests {
 
         // Create split
         let child1 = try parent.split(direction: .Vertical)
-        let child2 = parent.children[1]
+        let _ = parent.children[1]
 
         #expect(parent.children.count == 2)
 
@@ -206,7 +206,7 @@ struct FrameControllerTests {
 
         // Create split gives exactly 2 children
         let child1 = try parent.split(direction: .Horizontal)
-        let child2 = parent.children[1]
+        let _ = parent.children[1]
 
         #expect(parent.children.count == 2)
         #expect(parent.splitDirection == .Horizontal)
@@ -422,7 +422,7 @@ struct FrameControllerTests {
         #expect(frameController.windowTabs[0].isActive == true)
         #expect(frameController.windowTabs[1].isActive == false)
 
-        frameController.nextWindow()
+        _ = frameController.nextWindow()
 
         #expect(frameController.windowTabs[0].isActive == false)
         #expect(frameController.windowTabs[1].isActive == true)
@@ -437,10 +437,10 @@ struct FrameControllerTests {
         try frameController.addWindow(window1.windowId, shouldFocus: true)
         try frameController.addWindow(window2.windowId, shouldFocus: false)
 
-        frameController.nextWindow()
+        _ = frameController.nextWindow()
         #expect(frameController.windowTabs[1].isActive == true)
 
-        frameController.previousWindow()
+        _ = frameController.previousWindow()
 
         #expect(frameController.windowTabs[0].isActive == true)
         #expect(frameController.windowTabs[1].isActive == false)
