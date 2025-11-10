@@ -96,7 +96,7 @@ class FrameWindow: FrameWindowProtocol {
         window.close()
     }
 
-    deinit {
+    @MainActor deinit {
         window.close()
     }
 
