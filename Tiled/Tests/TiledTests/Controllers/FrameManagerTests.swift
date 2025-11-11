@@ -431,6 +431,32 @@ struct FrameManagerTests {
         #expect((mockWindow?.hideCallCount ?? 0) >= 1)
     }
 
+    @Test("Windows are repositioned to child frame geometry after split")
+    func testWindowsRepositionedAfterSplit() throws {
+        let frameManager = FrameManager(config: config, logger: logger)
+        let screen = NSScreen.main ?? NSScreen()
+        frameManager.initializeFromScreen(screen)
+
+        guard let root = frameManager.rootFrame else {
+            Issue.record("rootFrame should not be nil")
+            return
+        }
+
+        // Create and assign a window
+        let window = MockWindowController(title: "Test Window")
+        frameManager.registerExistingWindow(window, windowId: window.windowId)
+        try frameManager.assignWindow(window, shouldFocus: false)
+
+        // Reset reposition count to measure split operation only
+        window.resetMockState()
+
+        // Split should trigger window repositioning to new child frame geometry
+        try frameManager.splitHorizontally()
+
+        // Window should have been repositioned (snapped to child frame)
+        #expect(window.repositionCallCount > 0, "Window should be repositioned when frame splits")
+    }
+
     @Test("Move window left updates active frame")
     func testMoveWindowLeftUpdatesActiveFrame() throws {
         let frameManager = FrameManager(config: config, logger: logger)

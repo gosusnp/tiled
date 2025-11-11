@@ -69,14 +69,20 @@ class FrameManager {
         guard let current = activeFrame else { return }
         let newActive = try current.split(direction: .Horizontal)
         activeFrame = newActive
-        try snapFrameWindows(frame: newActive)
+        // Snap windows in both child frames after split
+        for child in current.children {
+            try snapFrameWindows(frame: child)
+        }
     }
 
     func splitVertically() throws {
         guard let current = activeFrame else { return }
         let newActive = try current.split(direction: .Vertical)
         activeFrame = newActive
-        try snapFrameWindows(frame: newActive)
+        // Snap windows in both child frames after split
+        for child in current.children {
+            try snapFrameWindows(frame: child)
+        }
     }
 
     func closeActiveFrame() throws {
