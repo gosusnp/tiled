@@ -39,6 +39,12 @@ protocol AccessibilityAPIHelper {
     /// Returns false for windows on other desktops or minimized
     func isWindowOnCurrentDesktop(_ window: AXUIElement) -> Bool
 
+    // MARK: - Space Detection (CGWindow API)
+
+    /// Get window numbers of all windows visible on the current Space
+    /// Filters by specified window names (for marker windows)
+    func getWindowNumbersOnCurrentSpace(withNameContaining: String) -> Set<Int>
+
     // MARK: - Window Operations
 
     /// Move the window to a specific position
@@ -267,5 +273,36 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
         }
 
         return false
+    }
+
+    func getWindowNumbersOnCurrentSpace(withNameContaining filterName: String) -> Set<Int> {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: AnyObject]] else {
+            return []
+        }
+
+        let ourPID = ProcessInfo.processInfo.processIdentifier
+        var windowNumbers = Set<Int>()
+
+        for windowInfo in windowList {
+            guard let pid = windowInfo[kCGWindowOwnerPID as String] as? Int,
+                  pid == ourPID else {
+                continue
+            }
+
+            guard let windowNumber = windowInfo[kCGWindowNumber as String] as? Int else {
+                continue
+            }
+
+            // Check if window name contains the filter string
+            if let windowName = windowInfo[kCGWindowName as String] as? String,
+               windowName.contains(filterName) {
+                windowNumbers.insert(windowNumber)
+            }
+        }
+
+        return windowNumbers
     }
 }

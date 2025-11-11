@@ -48,6 +48,10 @@ class TestAccessibilityAPIHelper: AccessibilityAPIHelper {
         return true
     }
 
+    func getWindowNumbersOnCurrentSpace(withNameContaining: String) -> Set<Int> {
+        return []
+    }
+
     // MARK: - Window Operations
     func move(_ element: AXUIElement, to: CGPoint) throws {
         // Mock: no-op

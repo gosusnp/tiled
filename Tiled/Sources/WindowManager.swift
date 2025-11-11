@@ -2,7 +2,6 @@
 // Copyright (c) 2025 Jimmy Ma
 
 import Cocoa
-import ApplicationServices
 
 // MARK: - WindowManager
 @MainActor
@@ -13,6 +12,7 @@ class WindowManager {
     let tracker: WindowTracker
     let registry: WindowRegistry
     let axHelper: AccessibilityAPIHelper
+    let spaceManager: SpaceManager
 
     // Computed properties that delegate to frameManager
     var activeFrame: FrameController? {
@@ -28,10 +28,14 @@ class WindowManager {
         self.registry = registry
         self.axHelper = axHelper
         self.tracker = WindowTracker(logger: logger, registry: registry)
+        self.spaceManager = SpaceManager(logger: logger, axHelper: axHelper)
     }
 
     func initialize() {
         self.logger.debug("Initializing WindowManager")
+
+        // Start space change detection
+        self.spaceManager.startTracking()
 
         // Initialize frame manager
         guard let screen = NSScreen.main else { return }

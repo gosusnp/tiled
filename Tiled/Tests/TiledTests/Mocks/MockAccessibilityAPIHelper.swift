@@ -83,6 +83,10 @@ class MockAccessibilityAPIHelper: @preconcurrency AccessibilityAPIHelper {
         true
     }
 
+    func getWindowNumbersOnCurrentSpace(withNameContaining: String) -> Set<Int> {
+        []
+    }
+
     // MARK: - Test Helpers
 
     func resetCallCounts() {
