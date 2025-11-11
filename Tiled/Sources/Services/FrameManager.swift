@@ -57,7 +57,7 @@ class FrameManager {
 
         while !commandQueue.isEmpty {
             let command = commandQueue.removeFirst()
-            // Placeholder: validateAndRepairState() will be implemented in Phase 4
+            // TODO: Consider adding state validation before executing commands
             try? await executeCommand(command)
         }
     }

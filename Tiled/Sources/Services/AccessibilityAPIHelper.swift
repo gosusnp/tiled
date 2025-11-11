@@ -45,6 +45,10 @@ protocol AccessibilityAPIHelper {
     /// Filters by specified window names (for marker windows)
     func getWindowNumbersOnCurrentSpace(withNameContaining: String) -> Set<Int>
 
+    /// Check if a specific window (by CGWindowID) is visible on the current Space
+    /// Returns true if window appears in optionOnScreenOnly list, false otherwise
+    func isWindowOnCurrentSpace(_ windowID: CGWindowID) -> Bool
+
     // MARK: - Window Operations
 
     /// Move the window to a specific position
@@ -304,5 +308,23 @@ class DefaultAccessibilityAPIHelper: AccessibilityAPIHelper {
         }
 
         return windowNumbers
+    }
+
+    func isWindowOnCurrentSpace(_ windowID: CGWindowID) -> Bool {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: AnyObject]] else {
+            return false
+        }
+
+        for windowInfo in windowList {
+            if let wID = windowInfo[kCGWindowNumber as String] as? Int,
+               wID == windowID {
+                return true
+            }
+        }
+
+        return false
     }
 }

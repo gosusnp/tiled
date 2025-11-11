@@ -49,9 +49,14 @@ class WindowManager {
         // Note: We use registerExistingWindow() here (direct registration) rather than enqueueCommand()
         // because this is one-time discovery at initialization before callbacks are registered.
         // New windows that arrive during normal operation are enqueued through the command queue.
-        // TODO: Consider unifying to always use enqueueCommand() if startup completeness becomes critical.
-        // Currently the timing window between discovery and callback registration is negligible.
+        // Only assign windows that are on the active Space to prevent cross-Space pollution.
+        // Windows on other Spaces will be discovered when those Spaces become active.
         for element in self.tracker.getWindows() {
+            // Skip windows that are on other Spaces
+            guard self.spaceManager.isWindowOnActiveSpace(element) else {
+                continue
+            }
+
             guard let windowId = self.registry.getOrRegister(element: element) else {
                 self.logger.warning("Failed to register window with registry")
                 continue
@@ -76,6 +81,14 @@ class WindowManager {
                 self.logger.warning("Failed to register window with registry on open")
                 return
             }
+
+            // Only assign windows that are on the active Space
+            // Windows on other Spaces will be discovered when those Spaces become active
+            guard self.spaceManager.isWindowOnActiveSpace(element) else {
+                self.logger.debug("Window is on a different Space, deferring assignment")
+                return
+            }
+
             let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
         }

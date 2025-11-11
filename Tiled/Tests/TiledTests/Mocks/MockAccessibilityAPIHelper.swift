@@ -87,6 +87,10 @@ class MockAccessibilityAPIHelper: @preconcurrency AccessibilityAPIHelper {
         []
     }
 
+    func isWindowOnCurrentSpace(_ windowID: CGWindowID) -> Bool {
+        true  // Default: assume window is on current Space
+    }
+
     // MARK: - Test Helpers
 
     func resetCallCounts() {

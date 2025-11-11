@@ -52,6 +52,10 @@ class TestAccessibilityAPIHelper: AccessibilityAPIHelper {
         return []
     }
 
+    func isWindowOnCurrentSpace(_ windowID: CGWindowID) -> Bool {
+        return true  // Default: assume window is on current Space
+    }
+
     // MARK: - Window Operations
     func move(_ element: AXUIElement, to: CGPoint) throws {
         // Mock: no-op

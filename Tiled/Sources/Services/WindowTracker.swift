@@ -302,8 +302,8 @@ class WindowTracker: @unchecked Sendable {
 
             if !windowList.isEmpty {
                 // Discover ALL windows from the app, including those on other Spaces
-                // Phase 4 (Window Assignment) will route windows to the correct Space's FrameManager
-                // We don't filter by position/screen here - that's Space detection's job
+                // WindowManager will route windows to the correct Space's FrameManager
+                // We don't filter by position/screen here - that's SpaceManager's responsibility
 
                 // Track windows by stable ID (lock held by caller)
                 for window in windowList {

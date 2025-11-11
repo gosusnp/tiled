@@ -43,6 +43,14 @@ class SpaceManager {
         return spaceFrameManagers[activeSpaceId]
     }
 
+    /// Check if a window is currently visible on the active Space
+    /// Uses axHelper for CGWindow API queries (allows mocking in tests).
+    /// Returns true if window appears in current Space's window list, false otherwise.
+    func isWindowOnActiveSpace(_ element: AXUIElement) -> Bool {
+        guard let windowID = axHelper.getWindowID(element) else { return false }
+        return axHelper.isWindowOnCurrentSpace(windowID)
+    }
+
     /// Start listening for space change notifications.
     func startTracking() {
         let center = NSWorkspace.shared.notificationCenter
