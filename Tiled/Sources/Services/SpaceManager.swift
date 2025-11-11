@@ -12,6 +12,7 @@ import ApplicationServices
 class SpaceManager {
     let logger: Logger
     let axHelper: AccessibilityAPIHelper
+    let config: ConfigController
 
     private var spaceChangeObserver: NSObjectProtocol?
     private var currentMarkerWindow: NSWindow?
@@ -23,9 +24,23 @@ class SpaceManager {
     /// The currently active Space
     private var activeSpace: Space?
 
-    init(logger: Logger, axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
+    /// FrameManager per Space
+    /// Key: Space ID, Value: FrameManager
+    private var spaceFrameManagers: [UUID: FrameManager] = [:]
+
+    /// The ID of the currently active Space
+    private var activeSpaceId: UUID?
+
+    init(logger: Logger, config: ConfigController, axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
         self.logger = logger
+        self.config = config
         self.axHelper = axHelper
+    }
+
+    /// Get the FrameManager for the currently active Space
+    var activeFrameManager: FrameManager? {
+        guard let activeSpaceId = activeSpaceId else { return nil }
+        return spaceFrameManagers[activeSpaceId]
     }
 
     /// Start listening for space change notifications.
@@ -60,6 +75,27 @@ class SpaceManager {
 
     // MARK: - Private
 
+    /// Get or create a FrameManager for the given Space
+    private func getOrCreateFrameManager(for spaceId: UUID) -> FrameManager {
+        if let existing = spaceFrameManagers[spaceId] {
+            return existing
+        }
+
+        // Create new FrameManager
+        let manager = FrameManager(config: config, logger: logger)
+        guard let screen = NSScreen.main else {
+            logger.warning("No main screen available for FrameManager initialization")
+            spaceFrameManagers[spaceId] = manager
+            return manager
+        }
+
+        manager.initializeFromScreen(screen)
+        spaceFrameManagers[spaceId] = manager
+        logger.debug("Created FrameManager for Space '\(spaceId)'")
+
+        return manager
+    }
+
     private func handleSpaceChange() {
         // Find which Space we're currently on by looking for marker windows
         let currentSpaceMarkers = axHelper.getWindowNumbersOnCurrentSpace(withNameContaining: "Tiled-SpaceMarker")
@@ -67,11 +103,17 @@ class SpaceManager {
         if let markerWindowNumber = currentSpaceMarkers.first, let space = knownSpaces[markerWindowNumber] {
             // Recognized existing Space
             activeSpace = space
+            activeSpaceId = space.id
             logger.debug("Space '\(space.id)' detected (marker: \(markerWindowNumber))")
         } else {
             // New Space - create a marker for it
             logger.debug("New Space detected, creating marker")
             createMarkerForCurrentSpace()
+        }
+
+        // Ensure we have a FrameManager for the active Space
+        if let activeSpaceId = activeSpaceId {
+            _ = getOrCreateFrameManager(for: activeSpaceId)
         }
     }
 
@@ -95,7 +137,11 @@ class SpaceManager {
         let space = Space(markerWindowNumber: window.windowNumber)
         knownSpaces[window.windowNumber] = space
         activeSpace = space
+        activeSpaceId = space.id
         currentMarkerWindow = window
+
+        // Create FrameManager for this Space
+        _ = getOrCreateFrameManager(for: space.id)
 
         logger.debug("Space '\(space.id)' created (marker: \(window.windowNumber))")
     }

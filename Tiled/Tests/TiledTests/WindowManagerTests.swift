@@ -17,14 +17,19 @@ struct WindowManagerTests {
     @Test("windowDisappeared removes window from map and frame")
     func testWindowDisappeared() async throws {
         let windowManager = WindowManager(logger: logger)
-        let config = ConfigController()
-        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-        // Set up FrameManager with a test frame
-        let frameManager = FrameManager(config: config)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, axHelper: MockAccessibilityAPIHelper())
+        // Initialize WindowManager to create FrameManager through SpaceManager
+        windowManager.spaceManager.startTracking()
+
+        // Get the FrameManager created by SpaceManager
+        guard let frameManager = windowManager.frameManager else {
+            Issue.record("No FrameManager after initialization")
+            return
+        }
+
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: windowManager.config, axHelper: MockAccessibilityAPIHelper())
         frameManager.activeFrame = frameManager.rootFrame
-        windowManager.frameManager = frameManager
 
         guard let frame = windowManager.activeFrame else {
             Issue.record("No active frame after setup")
@@ -61,14 +66,19 @@ struct WindowManagerTests {
     @Test("windowDisappeared focuses new active window when active window closes")
     func testWindowDisappearedFocusesNext() async throws {
         let windowManager = WindowManager(logger: logger)
-        let config = ConfigController()
-        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
-        // Set up FrameManager with a test frame
-        let frameManager = FrameManager(config: config)
-        frameManager.rootFrame = FrameController(rect: testFrame, config: config, axHelper: MockAccessibilityAPIHelper())
+        // Initialize WindowManager to create FrameManager through SpaceManager
+        windowManager.spaceManager.startTracking()
+
+        // Get the FrameManager created by SpaceManager
+        guard let frameManager = windowManager.frameManager else {
+            Issue.record("No FrameManager after initialization")
+            return
+        }
+
+        let testFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        frameManager.rootFrame = FrameController(rect: testFrame, config: windowManager.config, axHelper: MockAccessibilityAPIHelper())
         frameManager.activeFrame = frameManager.rootFrame
-        windowManager.frameManager = frameManager
 
         guard let frame = windowManager.activeFrame else {
             Issue.record("No active frame after setup")

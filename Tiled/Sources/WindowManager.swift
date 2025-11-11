@@ -7,20 +7,23 @@ import Cocoa
 @MainActor
 class WindowManager {
     var config: ConfigController = ConfigController()
-    var frameManager: FrameManager?
     let logger: Logger
     let tracker: WindowTracker
     let registry: WindowRegistry
     let axHelper: AccessibilityAPIHelper
     let spaceManager: SpaceManager
 
-    // Computed properties that delegate to frameManager
+    // Computed properties that delegate to spaceManager
     var activeFrame: FrameController? {
-        frameManager?.activeFrame
+        spaceManager.activeFrameManager?.activeFrame
     }
 
     var rootFrame: FrameController? {
-        frameManager?.rootFrame
+        spaceManager.activeFrameManager?.rootFrame
+    }
+
+    var frameManager: FrameManager? {
+        spaceManager.activeFrameManager
     }
 
     init(logger: Logger, registry: WindowRegistry = DefaultWindowRegistry(), axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
@@ -28,19 +31,14 @@ class WindowManager {
         self.registry = registry
         self.axHelper = axHelper
         self.tracker = WindowTracker(logger: logger, registry: registry)
-        self.spaceManager = SpaceManager(logger: logger, axHelper: axHelper)
+        self.spaceManager = SpaceManager(logger: logger, config: ConfigController(), axHelper: axHelper)
     }
 
     func initialize() {
         self.logger.debug("Initializing WindowManager")
 
-        // Start space change detection
+        // Start space change detection (creates initial FrameManager)
         self.spaceManager.startTracking()
-
-        // Initialize frame manager
-        guard let screen = NSScreen.main else { return }
-        self.frameManager = FrameManager(config: config, logger: logger)
-        self.frameManager?.initializeFromScreen(screen)
 
         inspectLayout()
 

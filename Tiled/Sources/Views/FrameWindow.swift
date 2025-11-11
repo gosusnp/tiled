@@ -29,7 +29,9 @@ class FrameWindow: FrameWindowProtocol {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        // Remove .canJoinAllSpaces so FrameWindow only appears on its own Space
+        // Each Space has its own FrameManager/FrameWindow that's Space-specific
+        panel.collectionBehavior = [.stationary]
 
         // Panel won't activate when shown
         panel.becomesKeyOnlyIfNeeded = false
