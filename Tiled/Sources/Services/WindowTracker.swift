@@ -297,37 +297,22 @@ class WindowTracker: @unchecked Sendable {
         for app in getApplicationsSortedByZIndex() {
             guard app.activationPolicy == .regular && !app.isHidden else { continue }
 
-            let appElement = AXUIElementCreateApplication(app.processIdentifier)
-            var windowsRef: CFTypeRef?
-            let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
+            // Use axHelper to get windows for consistency and testability
+            let windowList = self.axHelper.getWindowsForApplication(app)
 
-            if result == .success, let windowList = windowsRef as? [AXUIElement] {
-                // Filter out windows on other desktops (multi-desktop support not yet implemented)
-                let onCurrentDesktop = windowList.filter { window in
-                    // Get window position to check if it's on current desktop
-                    var posRef: CFTypeRef?
-                    let posResult = AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posRef)
-                    guard posResult == .success, let posValue = posRef as! AXValue? else {
-                        return false
-                    }
-
-                    var position = CGPoint.zero
-                    AXValueGetValue(posValue, .cgPoint, &position)
-
-                    // Check if window is within any screen's visible area
-                    return NSScreen.screens.contains { screen in
-                        screen.visibleFrame.contains(CGPoint(x: position.x + 1, y: position.y + 1))
-                    }
-                }
+            if !windowList.isEmpty {
+                // Discover ALL windows from the app, including those on other Spaces
+                // Phase 4 (Window Assignment) will route windows to the correct Space's FrameManager
+                // We don't filter by position/screen here - that's Space detection's job
 
                 // Track windows by stable ID (lock held by caller)
-                for window in onCurrentDesktop {
+                for window in windowList {
                     if let windowID = self.axHelper.getWindowID(window) {
                         self.trackedWindowIDs.insert(windowID)
                     }
                 }
 
-                windows += onCurrentDesktop
+                windows += windowList
             }
         }
 
@@ -338,15 +323,17 @@ class WindowTracker: @unchecked Sendable {
         let apps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
 
-        // Get window list in front-to-back order
+        // Get window list in front-to-back order (current Space only)
         guard let windowList = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
             kCGNullWindowID
         ) as? [[String: Any]] else {
+            // If we can't get window list, return apps in default order
+            // This ensures we discover apps even if they're on other Spaces
             return apps
         }
 
-        // Map PID to lowest (frontmost) window index
+        // Map PID to lowest (frontmost) window index for apps visible on current Space
         var pidToZIndex: [pid_t: Int] = [:]
 
         for (index, windowInfo) in windowList.enumerated() {
@@ -358,11 +345,9 @@ class WindowTracker: @unchecked Sendable {
             }
         }
 
-        return apps
-            // Filter apps with nil zIndex, likely on different screen
-            .filter { pidToZIndex[$0.processIdentifier] != nil }
-            // Sort apps by their frontmost window's z-index
-            .sorted { app1, app2 in
+        // Return all regular apps, sorted by z-index if available
+        // Apps without windows on current Space will be sorted to the end
+        return apps.sorted { app1, app2 in
             let z1 = pidToZIndex[app1.processIdentifier] ?? Int.max
             let z2 = pidToZIndex[app2.processIdentifier] ?? Int.max
             return z1 < z2  // Lower index = more in front
