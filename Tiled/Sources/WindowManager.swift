@@ -56,52 +56,54 @@ class WindowManager {
         // Observer automatically syncs UI as windows are assigned. No manual refresh needed.
 
         // Single handler for both observer and poller
+        // Observer: just register, don't assign yet (windows not ready to snap)
+        tracker.onWindowOpenedByObserver = { [weak self] element in
+            guard let self = self else { return }
+
+            // Register in global registry as ephemeral (no cgWindowID yet)
+            guard let windowId = self.registry.getOrRegister(element: element) else {
+                self.logger.debug("Observer: failed to register window")
+                return
+            }
+
+            // Register in space registry as ephemeral
+            guard let activeSpaceId = self.spaceManager.activeSpaceId else {
+                return
+            }
+            let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
+            spaceRegistry.registerEphemeral(windowId, forElement: element)
+
+            self.logger.debug("Observer: registered ephemeral window \(windowId.id)")
+        }
+
+        // Poller: assign window (has cgWindowID, ready to snap)
         let windowOpenedHandler: (AXUIElement) -> Void = { [weak self] element in
             guard let self = self else { return }
 
             // For space detection: assume window is on active space
-            // Observer fires before cgWindowID available; poller will validate when cgWindowID arrives
             guard self.spaceManager.isWindowOnActiveSpace(element) else {
                 self.logger.debug("Window is on a different Space, deferring assignment")
                 return
             }
 
-            // Register or reuse WindowId via global registry
-            // Creates ephemeral WindowId if cgWindowID not available yet (observer path)
-            // Or upgrades ephemeral to permanent when cgWindowID is available (poller path)
+            // Register or reuse WindowId (poller has cgWindowID, creates permanent)
             guard let windowId = self.registry.getOrRegister(element: element) else {
                 self.logger.warning("Failed to register window with registry on open")
                 return
             }
 
             // CRITICAL: Skip if window is already assigned to active frame
-            // This prevents duplicate assignments when poller rediscovers windows
-            // or when both observer and poller fire for the same window
             if let frameManager = self.frameManager, frameManager.frameContaining(windowId) != nil {
                 self.logger.debug("Window \(windowId.id) already in frame, skipping")
                 return
             }
 
-            self.logger.debug("Window \(windowId.id) not yet assigned, will enqueue assignment")
-
-            // Also register in active space's registry
-            guard let activeSpaceId = self.spaceManager.activeSpaceId else {
-                self.logger.warning("No active space set")
-                return
-            }
-
-            let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
-
-            // Register in space registry (ephemeral if no cgWindowID yet)
-            // Poller will discover cgWindowID later and trigger upgrade via SpaceWindowRegistry
-            spaceRegistry.registerEphemeral(windowId, forElement: element)
+            self.logger.debug("Poller: window \(windowId.id) ready for assignment, enqueuing")
 
             let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
         }
 
-        // Both observer and poller use same handler
-        tracker.onWindowOpenedByObserver = windowOpenedHandler
         tracker.onWindowOpened = windowOpenedHandler
 
         tracker.onWindowClosed = { [weak self] element in

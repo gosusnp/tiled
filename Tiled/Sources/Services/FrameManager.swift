@@ -164,7 +164,14 @@ class FrameManager {
         guard let frame = activeFrame else { return }
         try frame.addWindow(window.windowId, shouldFocus: shouldFocus)
         frameMap[window.windowId] = frame
-        try snapWindowToFrame(window.windowId, frame: frame)
+        do {
+            try snapWindowToFrame(window.windowId, frame: frame)
+        } catch {
+            // Graceful recovery: snap failed, so remove window from frame to prevent zombie state
+            _ = try? frame.removeWindow(window.windowId)
+            frameMap.removeValue(forKey: window.windowId)
+            throw error  // Re-throw so caller knows assignment failed
+        }
         // State change in frame.addWindow() triggers observer; no explicit UI refresh needed.
         // FrameManager is now decoupled from UI concerns and only manages frame operations.
     }
@@ -183,12 +190,14 @@ class FrameManager {
     }
 
     func nextWindow() {
-        let windowId = activeFrame?.nextWindow()
+        guard let frame = activeFrame else { return }
+        let windowId = frame.nextWindow()
         raiseWindow(windowId)
     }
 
     func previousWindow() {
-        let windowId = activeFrame?.previousWindow()
+        guard let frame = activeFrame else { return }
+        let windowId = frame.previousWindow()
         raiseWindow(windowId)
     }
 
@@ -222,8 +231,24 @@ class FrameManager {
             // 3. WindowId mismatch or stale reference
             logger.warning("Window controller not found for \(windowId.id) - cleaning up")
 
+            // Find frame containing this window before cleanup (cleanup removes it from frameMap)
+            let owningFrame = frameMap[windowId]
+
             // Clean up all references to prevent stale state
             cleanupMissingWindow(windowId)
+
+            // Graceful recovery: raise the new active window after cleanup
+            // The removeWindow() call during cleanup adjusted activeIndex to point to a valid window
+            if let frame = owningFrame, let nextWindowId = frame.windowStack.getActiveWindowId() {
+                if getWindow(nextWindowId) != nil {
+                    do {
+                        try getWindow(nextWindowId)?.raise()
+                        logger.debug("Gracefully recovered by raising window \(nextWindowId.id) after cleanup")
+                    } catch {
+                        logger.debug("Failed to raise recovery window: \(error)")
+                    }
+                }
+            }
             return
         }
 
