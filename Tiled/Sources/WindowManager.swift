@@ -51,8 +51,125 @@ class WindowManager {
         // New windows that arrive during normal operation are enqueued through the command queue.
         // Only assign windows that are on the active Space to prevent cross-Space pollution.
         // Windows on other Spaces will be discovered when those Spaces become active.
+        discoverWindowsForActiveSpace()
+
+        // Observer automatically syncs UI as windows are assigned. No manual refresh needed.
+
+        // Single handler for both observer and poller
+        let windowOpenedHandler: (AXUIElement) -> Void = { [weak self] element in
+            guard let self = self else { return }
+
+            guard self.spaceManager.isWindowOnActiveSpace(element) else {
+                self.logger.debug("Window is on a different Space, deferring assignment")
+                return
+            }
+
+            // Register or reuse WindowId via global registry
+            guard let windowId = self.registry.getOrRegister(element: element) else {
+                self.logger.warning("Failed to register window with registry on open")
+                return
+            }
+
+            // CRITICAL: Skip if window is already assigned to active frame
+            // This prevents duplicate assignments when poller rediscovers windows
+            // or when both observer and poller fire for the same window
+            if let frameManager = self.frameManager, frameManager.frameContaining(windowId) != nil {
+                self.logger.debug("Window \(windowId.id) already in frame, skipping")
+                return
+            }
+
+            self.logger.debug("Window \(windowId.id) not yet assigned, will enqueue assignment")
+
+            // Also register in active space's registry
+            guard let activeSpaceId = self.spaceManager.activeSpaceId else {
+                self.logger.warning("No active space set")
+                return
+            }
+
+            let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
+
+            // Try to get cgWindowID from poller (may not exist if observer fired first)
+            if let cgWindowID = self.axHelper.getWindowID(element) {
+                // Poller path or observer with cgWindowID available
+                if windowId.cgWindowID == nil {
+                    // Ephemeral → upgrade to permanent
+                    windowId._upgrade(cgWindowID: cgWindowID)
+                    spaceRegistry.upgradeToPermanent(windowId, withCGWindowID: cgWindowID)
+                } else if windowId.cgWindowID == cgWindowID {
+                    // Already permanent, already in space registry
+                } else {
+                    // Different cgWindowID (shouldn't happen)
+                    spaceRegistry.register(windowId, withCGWindowID: cgWindowID)
+                }
+            } else {
+                // Observer path, cgWindowID not available yet
+                // This is handled in SpaceWindowRegistry when ephemeral
+            }
+
+            let windowController = WindowController(windowId: windowId, axHelper: axHelper)
+            self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
+        }
+
+        // Both observer and poller use same handler
+        tracker.onWindowOpenedByObserver = windowOpenedHandler
+        tracker.onWindowOpened = windowOpenedHandler
+
+        tracker.onWindowClosed = { [weak self] element in
+            guard let self = self else { return }
+            guard let windowId = self.registry.getWindowId(for: element) else {
+                self.logger.debug("Window closed but not found in registry")
+                return
+            }
+
+            // Remove from space registry (permanent or ephemeral)
+            if let activeSpaceId = self.spaceManager.activeSpaceId {
+                let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
+                if let cgWindowID = windowId.cgWindowID {
+                    // Remove permanent window
+                    spaceRegistry.unregister(by: cgWindowID)
+                }
+                // Ephemeral cleanup is handled via element-based removal
+            }
+
+            // Remove from global registry
+            self.frameManager?.enqueueCommand(.windowDisappeared(windowId))
+            self.registry.unregister(windowId)
+        }
+
+        // Hook into space changes
+        // Note: We don't call discoverWindowsForActiveSpace() on space change because:
+        // 1. Observer and poller callbacks already have proper space filtering
+        // 2. Elements in tracker.getWindows() become stale over time
+        // 3. Iterating stale elements on space switch can cause false positives with isWindowOnActiveSpace()
+        // Windows on a new space will be discovered naturally when observer/poller detect them
+        spaceManager.onSpaceChanged = { [weak self] in
+            self?.logger.debug("Space changed - waiting for observer/poller to discover windows")
+            // Refresh active frame's UI in case it changed
+            if let frameManager = self?.frameManager, let activeFrame = frameManager.activeFrame {
+                activeFrame.refreshOverlay()
+            }
+        }
+    }
+
+    /// Discover and assign all windows that are on the currently active Space
+    /// Called during initialization and when switching to a new Space
+    ///
+    /// Note: Only assigns windows that:
+    /// 1. Are actually on the active space (verified by isWindowOnActiveSpace)
+    /// 2. Are not already assigned to this space's frame (checked via frameMap)
+    /// 3. Are successfully registered in the global registry
+    /// 4. Have valid, retrievable window IDs (defensive against stale elements)
+    private func discoverWindowsForActiveSpace() {
         for element in self.tracker.getWindows() {
-            // Skip windows that are on other Spaces
+            // Defensive: Try to get window ID first to verify element is valid/fresh
+            // Stale AXUIElements can cause isWindowOnActiveSpace() to return false positives
+            guard let cgWindowID = self.axHelper.getWindowID(element) else {
+                // Element is stale or invalid - skip it
+                self.logger.debug("Skipping window with invalid/stale element reference")
+                continue
+            }
+
+            // Verify window is actually on the active space using the stable window ID
             guard self.spaceManager.isWindowOnActiveSpace(element) else {
                 continue
             }
@@ -61,69 +178,21 @@ class WindowManager {
                 self.logger.warning("Failed to register window with registry")
                 continue
             }
+
+            // Skip windows already assigned to a frame in the active space
+            if let frameManager = self.frameManager, frameManager.frameContaining(windowId) != nil {
+                self.logger.debug("Window already assigned to frame in active space, skipping")
+                continue
+            }
+
             let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.registerExistingWindow(windowController, windowId: windowId)
             do {
                 try assignWindow(windowController, shouldFocus: false)
             } catch {
-                self.logger.warning("Failed to assign initial window: \(error)")
+                self.logger.warning("Failed to assign window for active space: \(error)")
                 self.frameManager?.unregisterWindow(windowId: windowId)
             }
-        }
-
-        // Observer automatically syncs UI as windows are assigned. No manual refresh needed.
-
-        // Register callbacks for window lifecycle events
-        // New windows are enqueued as commands, ensuring atomic processing with frame operations
-        tracker.onWindowOpened = { [weak self] element in
-            guard let self = self else { return }
-
-            // Only assign windows that are on the active Space
-            // Windows on other Spaces will be discovered when those Spaces become active
-            guard self.spaceManager.isWindowOnActiveSpace(element) else {
-                self.logger.debug("Window is on a different Space, deferring assignment")
-                return
-            }
-
-            // Register in active space's window registry with cgWindowID
-            guard let activeSpaceId = self.spaceManager.activeSpaceId else {
-                self.logger.warning("No active space set")
-                return
-            }
-
-            let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
-
-            // Get cgWindowID (system authority on window identity)
-            guard let cgWindowID = self.axHelper.getWindowID(element) else {
-                self.logger.warning("Unable to get cgWindowID for new window")
-                return
-            }
-
-            // Extract window's application PID
-            guard let appPID = self.axHelper.getAppPID(element) else {
-                self.logger.warning("Unable to get app PID for new window")
-                return
-            }
-
-            // Create WindowId and register in space registry
-            let windowId = WindowId(appPID: appPID, registry: self.registry)
-            windowId._upgrade(cgWindowID: cgWindowID)
-            spaceRegistry.register(windowId, withCGWindowID: cgWindowID)
-
-            let windowController = WindowController(windowId: windowId, axHelper: axHelper)
-            self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
-        }
-
-        tracker.onWindowClosed = { [weak self] element in
-            guard let self = self else { return }
-            guard let windowId = self.registry.getWindowId(for: element) else {
-                self.logger.debug("Window closed but not found in registry")
-                return
-            }
-            self.frameManager?.enqueueCommand(.windowDisappeared(windowId))
-            // Unregister from registry to invalidate the WindowId and trigger cleanup.
-            // This ensures stale WindowIds don't linger in frames with "Unknown" tabs.
-            self.registry.unregister(windowId)
         }
     }
 

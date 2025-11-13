@@ -35,6 +35,9 @@ class SpaceManager {
     /// The ID of the currently active Space
     private var _activeSpaceId: UUID?
 
+    /// Callback fired when the active space changes
+    var onSpaceChanged: (() -> Void)?
+
     init(logger: Logger, config: ConfigController, axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
         self.logger = logger
         self.config = config
@@ -151,6 +154,10 @@ class SpaceManager {
         if let activeSpaceId = activeSpaceId {
             _ = getOrCreateFrameManager(for: activeSpaceId)
         }
+
+        // Notify listeners that the space has changed
+        // This gives FrameManager a chance to refresh UI if needed
+        onSpaceChanged?()
     }
 
     private func createMarkerForCurrentSpace() {

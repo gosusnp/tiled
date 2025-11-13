@@ -24,7 +24,12 @@ class WindowTracker: @unchecked Sendable {
     /// CGWindowID is stable across sleep/wake cycles unlike AXUIElement references
     private var trackedWindowIDs: Set<CGWindowID> = []
 
+    /// Called by poller when a window opens (has cgWindowID from CGWindowList)
     var onWindowOpened: ((AXUIElement) -> Void)?
+
+    /// Called by observer when a window is detected (ephemeral, no cgWindowID yet)
+    var onWindowOpenedByObserver: ((AXUIElement) -> Void)?
+
     var onWindowClosed: ((AXUIElement) -> Void)?
     var onWindowFocused: ((AXUIElement) -> Void)?
 
@@ -85,9 +90,9 @@ class WindowTracker: @unchecked Sendable {
         // Note: onWindowOpened callback is NOT called here
         // The app will manually handle initial windows via getWindows()
 
-        // Wire observer callbacks for real-time detection
+        // Wire observer callbacks for real-time detection (observer creates ephemeral)
         self.observer.onWindowCreated = { [weak self] element in
-            self?.handleWindowCreated(element)
+            self?.handleWindowCreatedByObserver(element)
         }
 
         self.observer.onWindowClosed = { [weak self] element in
@@ -98,7 +103,7 @@ class WindowTracker: @unchecked Sendable {
             self?.handleWindowFocused(element)
         }
 
-        // Wire polling service callbacks for periodic validation
+        // Wire polling service callbacks for periodic validation (poller upgrades to permanent)
         self.pollingService.onWindowOpened = { [weak self] element in
             self?.handleWindowCreated(element)
         }
@@ -230,27 +235,48 @@ class WindowTracker: @unchecked Sendable {
 
     // MARK: - Event Handlers
 
-    /// Handle a window creation event from observer or polling service
-    /// - Parameter element: The newly created window
-    private func handleWindowCreated(_ element: AXUIElement) {
-        self.logger.debug("Window created event received")
+    /// Handle window creation from observer (may not be in CGWindowList yet)
+    /// - Parameter element: The newly created window detected by observer
+    private func handleWindowCreatedByObserver(_ element: AXUIElement) {
+        self.logger.debug("Window created by observer (ephemeral)")
 
-        // Get stable window ID (persists across sleep/wake)
+        // Observer detected a new window but it might not be in CGWindowList yet
+        // Let WindowManager/registry handle deduplication via getOrRegister()
+        // Just emit callback and let caller decide what to do
+
+        // Emit callback to subscribers for observer path (no lock held)
+        self.onWindowOpenedByObserver?(element)
+    }
+
+    /// Handle a window creation event from poller with cgWindowID
+    /// - Parameter element: The newly created window with known cgWindowID
+    private func handleWindowCreated(_ element: AXUIElement) {
+        self.logger.debug("Window created by poller (permanent)")
+
+        // Poller provides cgWindowID via CGWindowList - this is system authority
+        // (In practice, poller has already extracted cgWindowID from CGWindowList)
+        // We still validate the element for robustness
         guard let windowID = self.axHelper.getWindowID(element) else {
-            self.logger.warning("Unable to get window ID for new window")
+            self.logger.warning("Unable to get window ID for new window from poller")
             return
         }
 
         // Check if already tracked (lock-free check)
-        guard shouldTrackWindow(windowID) else {
-            self.logger.debug("Window already tracked by ID: \(windowID)")
-            return
+        // NOTE: Even if already tracked, we MUST emit callback for poller
+        // because the window might not be assigned to a frame yet!
+        // The handler's dedup check (frameContaining) prevents re-assignment.
+        let isNew = shouldTrackWindow(windowID)
+
+        if isNew {
+            // Register window (narrow critical section)
+            registerWindow(element, windowID: windowID)
+        } else {
+            self.logger.debug("Window already tracked by ID: \(windowID) (checking frame assignment)")
         }
 
-        // Register window (narrow critical section)
-        registerWindow(element, windowID: windowID)
-
-        // Emit callback to subscribers (no lock held)
+        // CRITICAL: Always emit callback for poller path
+        // Even if window is already tracked, it might not be assigned to a frame
+        // FrameManager's dedup check handles preventing duplicate assignments
         self.onWindowOpened?(element)
     }
 

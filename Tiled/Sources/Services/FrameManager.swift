@@ -58,7 +58,11 @@ class FrameManager {
         while !commandQueue.isEmpty {
             let command = commandQueue.removeFirst()
             // TODO: Consider adding state validation before executing commands
-            try? await executeCommand(command)
+            do {
+                try await executeCommand(command)
+            } catch {
+                logger.error("Failed to execute frame command \(command): \(error)")
+            }
         }
     }
 
@@ -89,8 +93,13 @@ class FrameManager {
         guard let current = activeFrame else { return }
         let newActive = try current.closeFrame()
         activeFrame = newActive
-        if (newActive != nil) {
-            try snapFrameWindows(frame: newActive!)
+        if let frame = newActive {
+            do {
+                try snapFrameWindows(frame: frame)
+            } catch {
+                logger.error("Failed to snap windows after frame closure: \(error)")
+                throw error
+            }
         }
     }
 
@@ -204,12 +213,25 @@ class FrameManager {
     }
 
     private func raiseWindow(_ windowId: WindowId?) {
+        guard let windowId = windowId else { return }
+
         guard let window = getWindow(windowId) else {
-            // Window controller is missing - clean up all references
+            // Window controller is missing - this could indicate:
+            // 1. Window was closed (expected)
+            // 2. Window exists but got unregistered (cross-space bug)
+            // 3. WindowId mismatch or stale reference
+            logger.warning("Window controller not found for \(windowId.id) - cleaning up")
+
+            // Clean up all references to prevent stale state
             cleanupMissingWindow(windowId)
             return
         }
-        window.raise()
+
+        do {
+            window.raise()
+        } catch {
+            logger.error("Failed to raise window \(windowId.id): \(error)")
+        }
     }
 
     private func getWindow(_ windowId: WindowId?) -> WindowControllerProtocol? {
@@ -319,9 +341,13 @@ class FrameManager {
             frameMap[windowId] = frame
             // Position window in its frame
             try snapWindowToFrame(windowId, frame: frame)
+            logger.debug("Successfully assigned window \(windowId.id) to frame")
             // State change automatically triggers observer; UI stays in sync
         } catch {
-            logger.warning("Failed to assign window: \(error)")
+            logger.error("Failed to assign window \(windowId.id): \(error)")
+            // Cleanup: window was added to frame, so remove it
+            _ = frame.removeWindow(windowId)
+            frameMap.removeValue(forKey: windowId)
             windowControllerMap.removeValue(forKey: windowId.asKey())
         }
     }
