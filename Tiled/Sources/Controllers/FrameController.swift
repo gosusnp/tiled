@@ -156,7 +156,14 @@ class FrameController {
 
         // Add to target frame. Both removeWindow() and addWindow() trigger updateWindowTabs(),
         // which publishes state changes. Observers automatically react without explicit refresh calls.
-        try targetFrame.addWindow(windowId, shouldFocus: true)
+        do {
+            try targetFrame.addWindow(windowId, shouldFocus: true)
+        } catch {
+            // Rollback: if adding to target frame fails, restore window to source frame
+            // This ensures we don't lose the window if the target frame operation fails
+            _ = try? self.addWindow(windowId, shouldFocus: true)
+            throw error
+        }
     }
 
     /// Check if a specific window is the active window in this frame
@@ -252,10 +259,40 @@ class FrameController {
         let sibling = parent.children[myIndex == 0 ? 1 : 0]
 
         // Normal case: binary tree with 2 children
-        // Transfer windows first without updating tabs (children still exist)
-        try parent.takeWindowsFrom(self)
-        try parent.takeWindowsFrom(sibling)
+        // Save windows before transfer so we can rollback if transfer fails
+        let myWindows = self.windowStack.allWindowIds
+        let siblingWindows = sibling.windowStack.allWindowIds
 
+        // Try to transfer windows from both children to parent
+        // If any transfer fails, rollback by restoring windows to original frames
+        do {
+            try parent.takeWindowsFrom(self)
+            try parent.takeWindowsFrom(sibling)
+        } catch {
+            // Rollback: restore windows to original frames
+            // Note: We attempt restoration but don't propagate errors; the primary error is what matters
+            if !myWindows.isEmpty {
+                do {
+                    for windowId in myWindows {
+                        try self.addWindow(windowId, shouldFocus: false)
+                    }
+                } catch {
+                    // Silently skip if rollback fails; we tried to recover
+                }
+            }
+            if !siblingWindows.isEmpty {
+                do {
+                    for windowId in siblingWindows {
+                        try sibling.addWindow(windowId, shouldFocus: false)
+                    }
+                } catch {
+                    // Silently skip if rollback fails; we tried to recover
+                }
+            }
+            throw error
+        }
+
+        // Only if both transfers succeeded, clean up the frame tree
         // Remove all children from parent BEFORE updating tabs.
         // This is critical: updateWindowTabs() checks children.isEmpty to decide
         // whether to return tabs (leaf) or empty array (non-leaf).
