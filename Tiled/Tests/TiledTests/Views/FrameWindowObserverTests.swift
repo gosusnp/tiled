@@ -134,8 +134,7 @@ struct FrameWindowObserverTests {
         #expect(frameController.windowTabs.count == 2)
 
         // Remove first window
-        let removed = frameController.removeWindow(window1.windowId)
-        #expect(removed == true)
+        try frameController.removeWindow(window1.windowId)
         #expect(frameController.windowTabs.count == 1)
     }
 
@@ -289,8 +288,7 @@ struct FrameWindowObserverTests {
         #expect(leftBottom.windowTabs.isEmpty)
 
         // Op 3: Remove a window from leftTop
-        let removed = leftTop.removeWindow(w1.windowId)
-        #expect(removed == true)
+        try leftTop.removeWindow(w1.windowId)
         #expect(leftTop.windowTabs.count == 2)
 
         // Op 4: Close leftTop (consolidate back to left)
@@ -318,7 +316,7 @@ struct FrameWindowObserverTests {
 
         // Rapidly remove all
         for windowId in windowIds {
-            _ = frame.removeWindow(windowId)
+            try frame.removeWindow(windowId)
         }
         #expect(frame.windowTabs.isEmpty)
 

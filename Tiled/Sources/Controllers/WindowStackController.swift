@@ -61,9 +61,9 @@ class WindowStackController {
         }
     }
 
-    func remove(_ windowId: WindowId) -> Bool {
+    func remove(_ windowId: WindowId) throws {
         guard let index = windowIds.firstIndex(where: { $0 == windowId }) else {
-            return false
+            throw WindowStackError.windowNotFound
         }
         windowIds.remove(at: index)
 
@@ -71,7 +71,6 @@ class WindowStackController {
         if activeIndex >= index && activeIndex > 0 {
             activeIndex -= 1
         }
-        return true
     }
 
     func takeAll(from other: WindowStackController) throws {
@@ -111,4 +110,5 @@ class WindowStackController {
 
 enum WindowStackError: Error {
     case duplicateWindow
+    case windowNotFound
 }

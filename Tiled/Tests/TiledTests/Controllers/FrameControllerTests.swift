@@ -105,12 +105,11 @@ struct FrameControllerTests {
         _ = frameController.nextWindow()
 
         // Remove the active window
-        let removed = frameController.removeWindow(window2.windowId)
-        #expect(removed)
+        try frameController.removeWindow(window2.windowId)
         #expect(frameController.windowStack.count == 2)
     }
 
-    @Test("Removing non-existent window returns false")
+    @Test("Removing non-existent window throws error")
     func testRemoveNonExistentWindow() throws {
         let frameController = createFrameController()
         let window1 = MockWindowController(title: "Window 1")
@@ -118,9 +117,15 @@ struct FrameControllerTests {
 
         try frameController.addWindow(window1.windowId)
 
-        // Try to remove a window that was never added
-        let removed = frameController.removeWindow(window2.windowId)
-        #expect(!removed)
+        // Try to remove a window that was never added - should throw
+        var threwError = false
+        do {
+            try frameController.removeWindow(window2.windowId)
+        } catch WindowStackError.windowNotFound {
+            threwError = true
+        }
+
+        #expect(threwError)
         #expect(frameController.windowStack.count == 1)
     }
 
@@ -405,8 +410,7 @@ struct FrameControllerTests {
         try frameController.addWindow(window2.windowId)
         #expect(frameController.windowTabs.count == 2)
 
-        let removed = frameController.removeWindow(window1.windowId)
-        #expect(removed == true)
+        try frameController.removeWindow(window1.windowId)
         #expect(frameController.windowTabs.count == 1)
     }
 

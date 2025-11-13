@@ -251,9 +251,9 @@ class FrameManager {
         // Determine which frame owns this window
         let owningFrame = frame ?? frameMap[windowId]
 
-        // Remove from frame's window stack
+        // Remove from frame's window stack (best effort - window may already be gone)
         if let owningFrame = owningFrame {
-            _ = owningFrame.removeWindow(windowId)
+            _ = try? owningFrame.removeWindow(windowId)
         }
 
         // Remove from frameMap
@@ -302,7 +302,11 @@ class FrameManager {
             try frame.addWindow(window.windowId, shouldFocus: false)
             // State change triggers observer; no explicit UI refresh needed
         case .removeWindow(let window):
-            let _ = activeFrame?.removeWindow(window.windowId)
+            do {
+                try activeFrame?.removeWindow(window.windowId)
+            } catch {
+                logger.debug("Window not in active frame when removing: \(error)")
+            }
             // State change triggers observer; no explicit UI refresh needed
         case .focusWindow:
             // TODO Implement
@@ -345,8 +349,8 @@ class FrameManager {
             // State change automatically triggers observer; UI stays in sync
         } catch {
             logger.error("Failed to assign window \(windowId.id): \(error)")
-            // Cleanup: window was added to frame, so remove it
-            _ = frame.removeWindow(windowId)
+            // Cleanup: window was added to frame, so remove it (best effort)
+            _ = try? frame.removeWindow(windowId)
             frameMap.removeValue(forKey: windowId)
             windowControllerMap.removeValue(forKey: windowId.asKey())
         }
@@ -363,7 +367,7 @@ class FrameManager {
         let wasActive = frame.isActiveWindow(windowId)
 
         // Remove from frame. State change automatically triggers observer UI sync.
-        let _ = frame.removeWindow(windowId)
+        _ = try? frame.removeWindow(windowId)
         windowControllerMap.removeValue(forKey: windowId.asKey())
         frameMap.removeValue(forKey: windowId)
 

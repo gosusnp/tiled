@@ -993,8 +993,7 @@ struct FrameManagerTests {
         #expect(frame.windowTabs.count == 3, "Should have 3 tabs")
 
         // Remove first window (simulating it closing)
-        let wasRemoved = frame.removeWindow(window1.windowId)
-        #expect(wasRemoved == true, "Window should be removed successfully")
+        try frame.removeWindow(window1.windowId)
         #expect(frame.windowIds.count == 2, "Should have 2 windows after removal")
         #expect(frame.windowTabs.count == 2, "Should have 2 tabs after removal")
 
@@ -1004,8 +1003,7 @@ struct FrameManagerTests {
         #expect(frame.windowIds.contains(window3.windowId), "Window 3 should still be there")
 
         // Remove another window
-        let wasRemoved2 = frame.removeWindow(window2.windowId)
-        #expect(wasRemoved2 == true, "Second window should be removed")
+        try frame.removeWindow(window2.windowId)
         #expect(frame.windowIds.count == 1, "Should have 1 window left")
         #expect(frame.windowTabs.count == 1, "Should have 1 tab left")
         #expect(frame.windowIds.contains(window3.windowId), "Window 3 should be the only one left")

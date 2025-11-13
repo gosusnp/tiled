@@ -132,8 +132,7 @@ struct WindowStackControllerTests {
         #expect(stack.activeIndex == 0)
 
         // Remove the first window
-        let removed = stack.remove(windowId1)
-        #expect(removed)
+        try stack.remove(windowId1)
         #expect(stack.count == 2)
         #expect(stack.activeIndex == 0)
         #expect(stack.getActiveWindowId() === windowId2)
@@ -155,8 +154,7 @@ struct WindowStackControllerTests {
         #expect(stack.activeIndex == 2)
 
         // Remove middle window
-        let removed = stack.remove(windowId2)
-        #expect(removed)
+        try stack.remove(windowId2)
         #expect(stack.count == 2)
         #expect(stack.activeIndex == 1) // Decremented because removed index < activeIndex
         #expect(stack.getActiveWindowId() === windowId3)
@@ -175,14 +173,13 @@ struct WindowStackControllerTests {
         #expect(stack.activeIndex == 1)
 
         // Remove the active window (last one)
-        let removed = stack.remove(windowId2)
-        #expect(removed)
+        try stack.remove(windowId2)
         #expect(stack.count == 1)
         #expect(stack.activeIndex == 0) // Adjusted to valid index
         #expect(stack.getActiveWindowId() === windowId1)
     }
 
-    @Test("Returns false when removing non-existent window")
+    @Test("Throws error when removing non-existent window")
     func testRemoveNonExistentWindow() throws {
         let stack = WindowStackController(styleProvider: mockStyleProvider)
         let windowId1 = WindowId(appPID: 1234, registry: mockRegistry)
@@ -190,8 +187,14 @@ struct WindowStackControllerTests {
 
         try stack.add(windowId1)
 
-        let removed = stack.remove(windowId2)
-        #expect(!removed)
+        var threwError = false
+        do {
+            try stack.remove(windowId2)
+        } catch WindowStackError.windowNotFound {
+            threwError = true
+        }
+
+        #expect(threwError)
         #expect(stack.count == 1)
         #expect(stack.getActiveWindowId() === windowId1)
     }

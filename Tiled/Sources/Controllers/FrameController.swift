@@ -128,12 +128,9 @@ class FrameController {
         self.updateWindowTabs()
     }
 
-    func removeWindow(_ windowId: WindowId) -> Bool {
-        let wasRemoved = self.windowStack.remove(windowId)
-        if wasRemoved {
-            self.updateWindowTabs()
-        }
-        return wasRemoved
+    func removeWindow(_ windowId: WindowId) throws {
+        try self.windowStack.remove(windowId)
+        self.updateWindowTabs()
     }
 
     func nextWindow() -> WindowId? {
@@ -150,9 +147,7 @@ class FrameController {
 
     func moveWindow(_ windowId: WindowId, toFrame targetFrame: FrameController) throws {
         // Remove from source frame
-        guard self.removeWindow(windowId) else {
-            return
-        }
+        try self.removeWindow(windowId)
 
         // Add to target frame. Both removeWindow() and addWindow() trigger updateWindowTabs(),
         // which publishes state changes. Observers automatically react without explicit refresh calls.
