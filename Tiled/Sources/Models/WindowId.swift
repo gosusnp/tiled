@@ -22,7 +22,7 @@ class WindowId: WindowIdObserver, Hashable {
     /// Cached element reference (weak, may become stale)
     private weak var cachedElement: AXUIElement?
 
-    /// Window is still valid (false if both cgWindowID and element are lost)
+    /// Window is still valid (false if explicitly invalidated by registry)
     private(set) var isValid: Bool = true
 
     /// Weak reference to registry for state queries
@@ -51,6 +51,13 @@ class WindowId: WindowIdObserver, Hashable {
 
         self.cachedElement = element
         return element
+    }
+
+    /// Check if window is valid and currently accessible (comprehensive validity check)
+    /// Wraps both the invalidation flag and element accessibility for callers.
+    var isAccessible: Bool {
+        guard isValid else { return false }
+        return getCurrentElement() != nil
     }
 
     /// Stable key for dictionary storage (UUID-based, never invalidated)

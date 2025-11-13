@@ -84,13 +84,69 @@ class WindowStackController {
     // Window cycling
     func nextWindow() -> WindowId? {
         guard !windowIds.isEmpty else { return nil }
+
+        // Move to next position
         activeIndex = (activeIndex + 1) % windowIds.count
+
+        // Skip/remove invalid windows at current position until we find a valid one
+        while !windowIds.isEmpty {
+            // Ensure activeIndex is within bounds before accessing
+            if activeIndex >= windowIds.count {
+                activeIndex = activeIndex % windowIds.count
+            }
+
+            // Check if current window is valid
+            if windowIds[activeIndex].isValid {
+                break  // Found a valid window
+            }
+
+            // Invalid window, remove it
+            windowIds.remove(at: activeIndex)
+        }
+
+        guard !windowIds.isEmpty && activeIndex < windowIds.count else { return nil }
         return windowIds[activeIndex]
     }
 
     func previousWindow() -> WindowId? {
         guard !windowIds.isEmpty else { return nil }
+
+        // Move to previous position
         activeIndex = activeIndex == 0 ? windowIds.count - 1 : activeIndex - 1
+
+        // Skip/remove invalid windows at current position until we find a valid one
+        while !windowIds.isEmpty {
+            // Ensure activeIndex is within bounds before accessing
+            if activeIndex >= windowIds.count {
+                activeIndex = windowIds.count - 1
+            }
+
+            // Check if current window is valid
+            if windowIds[activeIndex].isValid {
+                break  // Found a valid window
+            }
+
+            // Invalid window, remove it
+            let removedIndex = activeIndex
+            windowIds.remove(at: removedIndex)
+
+            if windowIds.isEmpty {
+                return nil
+            }
+
+            // After removing at removedIndex, we need to continue going backward
+            // The element that was at removedIndex+1 is now at removedIndex
+            // But we want to go backward, so we need to check the previous element
+            if removedIndex == 0 {
+                // We just removed the first element, so go to the end
+                activeIndex = windowIds.count - 1
+            } else {
+                // Otherwise, go to the element before where we just removed
+                activeIndex = removedIndex - 1
+            }
+        }
+
+        guard !windowIds.isEmpty && activeIndex < windowIds.count else { return nil }
         return windowIds[activeIndex]
     }
 

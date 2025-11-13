@@ -54,10 +54,11 @@ struct SpaceManagerTests {
         // Mock: getWindowID returns nil (window ID unavailable - likely animating/newly created)
         mockHelper.getWindowIDResult = nil
 
-        // New behavior: assume window is on active space if we can't match the window ID
-        // This prevents deferring windows that are animating or have unstable bounds
+        // Current behavior: reject window if we can't match the window ID
+        // This prevents cross-space leakage when bounds matching fails
+        // The poller will later discover cgWindowID and validate space membership properly
         let isOnActiveSpace = spaceManager.isWindowOnActiveSpace(testWindow)
-        #expect(isOnActiveSpace == true)
+        #expect(isOnActiveSpace == false)
     }
 
     @Test("activeFrameManager returns nil when no active Space")

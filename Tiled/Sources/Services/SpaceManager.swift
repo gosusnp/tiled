@@ -65,24 +65,18 @@ class SpaceManager {
     /// Uses CGWindow API with `.optionOnScreenOnly` flag (only visible on current Space).
     /// Returns true if window appears in current Space's window list, false otherwise.
     ///
-    /// Note: For windows without cgWindowID (ephemeral windows from observer), we assume
-    /// they're on the active space. This is safe because:
-    /// - Poller will later discover cgWindowID and validate space membership
-    /// - Better to show a window initially than hide it incorrectly
-    /// - No bounds matching needed - faster and more reliable
+    /// Note: If bounds matching fails (returns false), we reject the window to prevent
+    /// cross-space leakage. The poller will later discover cgWindowID and validate
+    /// space membership properly.
     func isWindowOnActiveSpace(_ element: AXUIElement) -> Bool {
-        // Avoid expensive bounds matching that can fail for animating/new windows
-        // For observer path: assume on active space, will be validated by poller cgWindowID discovery
-        // For poller path: will have cgWindowID available for definitive check
-        // For discovery: tracker.getWindows() only returns windows on current space already
-
         // Try to get cgWindowID via bounds matching (expensive, but may work for some windows)
         guard let windowID = axHelper.getWindowID(element) else {
             // Bounds matching unavailable or failed
-            // Assume window is on active space (safe fallback)
-            // It will be validated later when cgWindowID is obtained via poller
-            logger.debug("Window bounds matching unavailable, assuming on active space")
-            return true
+            // Can't verify space membership, so reject (false) to prevent cross-space leakage
+            // Observer path: ephemeral windows will be validated by poller when cgWindowID is obtained
+            // Poller path: will have cgWindowID available for definitive check
+            logger.debug("Window bounds matching unavailable, cannot verify space membership")
+            return false
         }
 
         return axHelper.isWindowOnCurrentSpace(windowID)
