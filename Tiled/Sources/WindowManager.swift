@@ -77,10 +77,6 @@ class WindowManager {
         // New windows are enqueued as commands, ensuring atomic processing with frame operations
         tracker.onWindowOpened = { [weak self] element in
             guard let self = self else { return }
-            guard let windowId = self.registry.getOrRegister(element: element) else {
-                self.logger.warning("Failed to register window with registry on open")
-                return
-            }
 
             // Only assign windows that are on the active Space
             // Windows on other Spaces will be discovered when those Spaces become active
@@ -88,6 +84,31 @@ class WindowManager {
                 self.logger.debug("Window is on a different Space, deferring assignment")
                 return
             }
+
+            // Register in active space's window registry with cgWindowID
+            guard let activeSpaceId = self.spaceManager.activeSpaceId else {
+                self.logger.warning("No active space set")
+                return
+            }
+
+            let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
+
+            // Get cgWindowID (system authority on window identity)
+            guard let cgWindowID = self.axHelper.getWindowID(element) else {
+                self.logger.warning("Unable to get cgWindowID for new window")
+                return
+            }
+
+            // Extract window's application PID
+            guard let appPID = self.axHelper.getAppPID(element) else {
+                self.logger.warning("Unable to get app PID for new window")
+                return
+            }
+
+            // Create WindowId and register in space registry
+            let windowId = WindowId(appPID: appPID, registry: self.registry)
+            windowId._upgrade(cgWindowID: cgWindowID)
+            spaceRegistry.register(windowId, withCGWindowID: cgWindowID)
 
             let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))

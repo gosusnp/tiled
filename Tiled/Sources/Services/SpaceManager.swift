@@ -33,7 +33,7 @@ class SpaceManager {
     private var spaceWindowRegistries: [UUID: SpaceWindowRegistry] = [:]
 
     /// The ID of the currently active Space
-    private var activeSpaceId: UUID?
+    private var _activeSpaceId: UUID?
 
     init(logger: Logger, config: ConfigController, axHelper: AccessibilityAPIHelper = DefaultAccessibilityAPIHelper()) {
         self.logger = logger
@@ -41,15 +41,20 @@ class SpaceManager {
         self.axHelper = axHelper
     }
 
+    /// Get the ID of the currently active Space
+    var activeSpaceId: UUID? {
+        return _activeSpaceId
+    }
+
     /// Get the FrameManager for the currently active Space
     var activeFrameManager: FrameManager? {
-        guard let activeSpaceId = activeSpaceId else { return nil }
+        guard let activeSpaceId = _activeSpaceId else { return nil }
         return spaceFrameManagers[activeSpaceId]
     }
 
     /// Get the WindowRegistry for the currently active Space
     var activeWindowRegistry: SpaceWindowRegistry? {
-        guard let activeSpaceId = activeSpaceId else { return nil }
+        guard let activeSpaceId = _activeSpaceId else { return nil }
         return spaceWindowRegistries[activeSpaceId]
     }
 
@@ -134,7 +139,7 @@ class SpaceManager {
         if let markerWindowNumber = currentSpaceMarkers.first, let space = knownSpaces[markerWindowNumber] {
             // Recognized existing Space
             activeSpace = space
-            activeSpaceId = space.id
+            _activeSpaceId = space.id
             logger.debug("Space '\(space.id)' detected (marker: \(markerWindowNumber))")
         } else {
             // New Space - create a marker for it
@@ -168,7 +173,7 @@ class SpaceManager {
         let space = Space(markerWindowNumber: window.windowNumber)
         knownSpaces[window.windowNumber] = space
         activeSpace = space
-        activeSpaceId = space.id
+        _activeSpaceId = space.id
         currentMarkerWindow = window
 
         // Create FrameManager for this Space
@@ -181,7 +186,7 @@ class SpaceManager {
 
     /// Test helper: Set active space directly (for unit tests)
     func _setActiveSpace(id spaceId: UUID) {
-        activeSpaceId = spaceId
+        _activeSpaceId = spaceId
         logger.debug("Test helper: Set active space to '\(spaceId)'")
     }
 
