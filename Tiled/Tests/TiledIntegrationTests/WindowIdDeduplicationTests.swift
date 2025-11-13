@@ -175,3 +175,112 @@ struct WindowIdDeduplicationTests {
         }
     }
 }
+
+// MARK: - SpaceWindowRegistry Ephemeral Tests
+
+/// Integration tests for SpaceWindowRegistry ephemeral window handling.
+/// These tests use ObjectIdentifier on real AXUIElements, so they must be integration tests.
+@MainActor
+@Suite("SpaceWindowRegistry Ephemeral")
+struct SpaceWindowRegistryEphemeralTests {
+    var registry: SpaceWindowRegistry!
+    var logger: Logger = Logger()
+    var mockWindowRegistry: DefaultWindowRegistry!
+
+    init() {
+        logger = Logger()
+        registry = SpaceWindowRegistry(logger: logger)
+        mockWindowRegistry = DefaultWindowRegistry(axHelper: DefaultAccessibilityAPIHelper())
+    }
+
+    @Test
+    func storesAndRetrievesEphemeralByElement() throws {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let element = AXUIElementCreateApplication(pid)
+        let appPID: pid_t = 1234
+
+        // Create ephemeral WindowId (cgWindowID=nil)
+        let windowId = WindowId(appPID: appPID, registry: mockWindowRegistry)
+        #expect(windowId.cgWindowID == nil)
+
+        // Store in registry
+        registry.registerEphemeral(windowId, forElement: element)
+
+        // Lookup by element
+        let retrieved = registry.lookupEphemeral(by: element)
+        #expect(retrieved?.id == windowId.id)
+        #expect(retrieved?.cgWindowID == nil)
+    }
+
+    @Test
+    func upgradesEphemeralToPermanent() throws {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let element = AXUIElementCreateApplication(pid)
+        let cgWindowID: CGWindowID = 99
+        let appPID: pid_t = 5678
+
+        // Create and register ephemeral
+        let windowId = WindowId(appPID: appPID, registry: mockWindowRegistry)
+        let originalUUID = windowId.id
+        registry.registerEphemeral(windowId, forElement: element)
+
+        // Verify it's ephemeral
+        #expect(windowId.cgWindowID == nil)
+        #expect(registry.lookupEphemeral(by: element)?.id == originalUUID)
+
+        // Upgrade to permanent
+        windowId._upgrade(cgWindowID: cgWindowID)
+        registry.upgradeToPermanent(windowId, withCGWindowID: cgWindowID)
+
+        // Verify upgrade
+        #expect(windowId.cgWindowID == cgWindowID)
+        #expect(windowId.id == originalUUID)  // UUID unchanged
+        #expect(registry.lookupPermanent(by: cgWindowID)?.id == originalUUID)
+        #expect(registry.lookupEphemeral(by: element) == nil)  // Removed from ephemeral
+    }
+
+    @Test
+    func cleansUpOrphanedEphemerals() throws {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let staleElement = AXUIElementCreateApplication(pid)
+        let validElement = AXUIElementCreateApplication(pid)
+        let appPID: pid_t = 1234
+
+        // Create 2 ephemerals
+        let ephemeral1 = WindowId(appPID: appPID, registry: mockWindowRegistry)
+        let ephemeral2 = WindowId(appPID: appPID, registry: mockWindowRegistry)
+        let id1 = ephemeral1.id
+        let id2 = ephemeral2.id
+
+        registry.registerEphemeral(ephemeral1, forElement: staleElement)
+        registry.registerEphemeral(ephemeral2, forElement: validElement)
+
+        // Verify both exist
+        #expect(registry.lookupEphemeral(by: staleElement)?.id == id1)
+        #expect(registry.lookupEphemeral(by: validElement)?.id == id2)
+
+        // Mark staleElement as stale and cleanup orphaned
+        registry.removeOrphanedEphemeral(by: staleElement)
+
+        // Verify stale removed, valid remains
+        #expect(registry.lookupEphemeral(by: staleElement) == nil)
+        #expect(registry.lookupEphemeral(by: validElement)?.id == id2)
+    }
+
+    @Test
+    func reusesEphemeralForSameElement() throws {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let element = AXUIElementCreateApplication(pid)
+        let appPID: pid_t = 1234
+
+        // Create and register first ephemeral
+        let windowId1 = WindowId(appPID: appPID, registry: mockWindowRegistry)
+        let uuid1 = windowId1.id
+        registry.registerEphemeral(windowId1, forElement: element)
+
+        // Lookup same element again
+        let retrieved = registry.lookupEphemeral(by: element)
+        #expect(retrieved?.id == uuid1)
+        #expect(retrieved === windowId1)  // Same instance
+    }
+}

@@ -28,6 +28,10 @@ class SpaceManager {
     /// Key: Space ID, Value: FrameManager
     private var spaceFrameManagers: [UUID: FrameManager] = [:]
 
+    /// WindowRegistry per Space
+    /// Key: Space ID, Value: SpaceWindowRegistry
+    private var spaceWindowRegistries: [UUID: SpaceWindowRegistry] = [:]
+
     /// The ID of the currently active Space
     private var activeSpaceId: UUID?
 
@@ -43,12 +47,31 @@ class SpaceManager {
         return spaceFrameManagers[activeSpaceId]
     }
 
+    /// Get the WindowRegistry for the currently active Space
+    var activeWindowRegistry: SpaceWindowRegistry? {
+        guard let activeSpaceId = activeSpaceId else { return nil }
+        return spaceWindowRegistries[activeSpaceId]
+    }
+
     /// Check if a window is currently visible on the active Space
     /// Uses axHelper for CGWindow API queries (allows mocking in tests).
     /// Returns true if window appears in current Space's window list, false otherwise.
     func isWindowOnActiveSpace(_ element: AXUIElement) -> Bool {
         guard let windowID = axHelper.getWindowID(element) else { return false }
         return axHelper.isWindowOnCurrentSpace(windowID)
+    }
+
+    /// Get or create WindowRegistry for the given Space
+    func getOrCreateRegistry(for spaceId: UUID) -> SpaceWindowRegistry {
+        if let existing = spaceWindowRegistries[spaceId] {
+            return existing
+        }
+
+        let registry = SpaceWindowRegistry(logger: logger)
+        spaceWindowRegistries[spaceId] = registry
+        logger.debug("Created WindowRegistry for Space '\(spaceId)'")
+
+        return registry
     }
 
     /// Start listening for space change notifications.
@@ -152,6 +175,14 @@ class SpaceManager {
         _ = getOrCreateFrameManager(for: space.id)
 
         logger.debug("Space '\(space.id)' created (marker: \(window.windowNumber))")
+    }
+
+    // MARK: - Testing
+
+    /// Test helper: Set active space directly (for unit tests)
+    func _setActiveSpace(id spaceId: UUID) {
+        activeSpaceId = spaceId
+        logger.debug("Test helper: Set active space to '\(spaceId)'")
     }
 
 }
