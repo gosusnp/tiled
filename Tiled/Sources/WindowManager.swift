@@ -137,16 +137,25 @@ class WindowManager {
         }
 
         // Hook into space changes
-        // Note: We don't call discoverWindowsForActiveSpace() on space change because:
-        // 1. Observer and poller callbacks already have proper space filtering
-        // 2. Elements in tracker.getWindows() become stale over time
-        // 3. Iterating stale elements on space switch can cause false positives with isWindowOnActiveSpace()
-        // Windows on a new space will be discovered naturally when observer/poller detect them
+        // When space changes, we need to ensure windows on the new space are discovered quickly
+        // Note: We don't call discoverWindowsForActiveSpace() directly because:
+        // 1. Elements in tracker.getWindows() may become stale over time
+        // 2. Stale elements can cause false positives with isWindowOnActiveSpace()
+        // 3. Observer/poller callbacks handle discovery more reliably
+        // However, we should enqueue a discovery task to find windows faster
         spaceManager.onSpaceChanged = { [weak self] in
-            self?.logger.debug("Space changed - waiting for observer/poller to discover windows")
-            // Refresh active frame's UI in case it changed
-            if let frameManager = self?.frameManager, let activeFrame = frameManager.activeFrame {
+            guard let self = self else { return }
+            self.logger.debug("Space changed - enqueuing window discovery for new space")
+
+            // Refresh active frame's UI
+            if let frameManager = self.frameManager, let activeFrame = frameManager.activeFrame {
                 activeFrame.refreshOverlay()
+            }
+
+            // Enqueue window discovery on space change for faster window assignment
+            // Use a small delay to let the space settle
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.discoverWindowsForActiveSpace()
             }
         }
     }

@@ -192,9 +192,13 @@ class SpaceManager {
     // MARK: - Testing
 
     /// Test helper: Set active space directly (for unit tests)
+    /// Mirrors handleSpaceChange() by creating FrameManager for the space
     func _setActiveSpace(id spaceId: UUID) {
         _activeSpaceId = spaceId
         logger.debug("Test helper: Set active space to '\(spaceId)'")
+
+        // Mirror handleSpaceChange() by creating FrameManager
+        _ = getOrCreateFrameManager(for: spaceId)
     }
 
 }
