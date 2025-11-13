@@ -44,18 +44,20 @@ struct SpaceManagerTests {
         #expect(isOnActiveSpace == true, "Should delegate to axHelper for Space detection")
     }
 
-    @Test("isWindowOnActiveSpace returns false when window ID cannot be obtained")
+    @Test("isWindowOnActiveSpace assumes true when window ID cannot be obtained")
     func testWindowIdNotObtained() throws {
         let mockHelper = MockAccessibilityAPIHelper()
         let spaceManager = SpaceManager(logger: logger, config: ConfigController(), axHelper: mockHelper)
 
         let testWindow = AXUIElementCreateApplication(ProcessInfo.processInfo.processIdentifier)
 
-        // Mock: getWindowID returns nil (window ID unavailable)
+        // Mock: getWindowID returns nil (window ID unavailable - likely animating/newly created)
         mockHelper.getWindowIDResult = nil
 
+        // New behavior: assume window is on active space if we can't match the window ID
+        // This prevents deferring windows that are animating or have unstable bounds
         let isOnActiveSpace = spaceManager.isWindowOnActiveSpace(testWindow)
-        #expect(isOnActiveSpace == false)
+        #expect(isOnActiveSpace == true)
     }
 
     @Test("activeFrameManager returns nil when no active Space")

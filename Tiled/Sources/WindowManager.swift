@@ -59,12 +59,16 @@ class WindowManager {
         let windowOpenedHandler: (AXUIElement) -> Void = { [weak self] element in
             guard let self = self else { return }
 
+            // For space detection: assume window is on active space
+            // Observer fires before cgWindowID available; poller will validate when cgWindowID arrives
             guard self.spaceManager.isWindowOnActiveSpace(element) else {
                 self.logger.debug("Window is on a different Space, deferring assignment")
                 return
             }
 
             // Register or reuse WindowId via global registry
+            // Creates ephemeral WindowId if cgWindowID not available yet (observer path)
+            // Or upgrades ephemeral to permanent when cgWindowID is available (poller path)
             guard let windowId = self.registry.getOrRegister(element: element) else {
                 self.logger.warning("Failed to register window with registry on open")
                 return
@@ -88,23 +92,9 @@ class WindowManager {
 
             let spaceRegistry = self.spaceManager.getOrCreateRegistry(for: activeSpaceId)
 
-            // Try to get cgWindowID from poller (may not exist if observer fired first)
-            if let cgWindowID = self.axHelper.getWindowID(element) {
-                // Poller path or observer with cgWindowID available
-                if windowId.cgWindowID == nil {
-                    // Ephemeral → upgrade to permanent
-                    windowId._upgrade(cgWindowID: cgWindowID)
-                    spaceRegistry.upgradeToPermanent(windowId, withCGWindowID: cgWindowID)
-                } else if windowId.cgWindowID == cgWindowID {
-                    // Already permanent, already in space registry
-                } else {
-                    // Different cgWindowID (shouldn't happen)
-                    spaceRegistry.register(windowId, withCGWindowID: cgWindowID)
-                }
-            } else {
-                // Observer path, cgWindowID not available yet
-                // This is handled in SpaceWindowRegistry when ephemeral
-            }
+            // Register in space registry (ephemeral if no cgWindowID yet)
+            // Poller will discover cgWindowID later and trigger upgrade via SpaceWindowRegistry
+            spaceRegistry.registerEphemeral(windowId, forElement: element)
 
             let windowController = WindowController(windowId: windowId, axHelper: axHelper)
             self.frameManager?.enqueueCommand(.windowAppeared(windowController, windowId))
@@ -171,18 +161,14 @@ class WindowManager {
     private func discoverWindowsForActiveSpace() {
         for element in self.tracker.getWindows() {
             // Defensive: Try to get window ID first to verify element is valid/fresh
-            // Stale AXUIElements can cause isWindowOnActiveSpace() to return false positives
-            guard let cgWindowID = self.axHelper.getWindowID(element) else {
-                // Element is stale or invalid - skip it
-                self.logger.debug("Skipping window with invalid/stale element reference")
-                continue
-            }
-
-            // Verify window is actually on the active space using the stable window ID
+            // Tracker only returns windows on active space, so assume on active space
+            // Bounds matching unreliable for stale elements anyway
             guard self.spaceManager.isWindowOnActiveSpace(element) else {
                 continue
             }
 
+            // Register window without bounds matching
+            // cgWindowID will be discovered by poller if available
             guard let windowId = self.registry.getOrRegister(element: element) else {
                 self.logger.warning("Failed to register window with registry")
                 continue
